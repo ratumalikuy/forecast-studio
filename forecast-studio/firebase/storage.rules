@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Setiap pengguna hanya dapat membaca, mengunggah, dan menghapus file di dalam folder UID miliknya.
+    match /users/{uid}/datasets/{datasetId}/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size <= 25 * 1024 * 1024
+        && request.resource.name.matches('.*\\.([xX][lL][sS][xXmM]|[cC][sS][vV])$');
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Blokir seluruh path lain secara default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

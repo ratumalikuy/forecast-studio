@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment & Secrets (NEVER commit credentials!)
+.env
+.env.*
+!.env.example
+*service-account*.json
+*firebase-adminsdk*.json
+serviceAccountKey.json
+credentials.json
+secrets/
+
+# Uploaded user files & temporary processing outputs
+uploads/
+tmp/
+temp/
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+!backend/tests/fixtures/*.csv
+
+# Logs & caches
+*.log
+logs/
+.cache/
+.DS_Store
+Thumbs.db
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+*.swo

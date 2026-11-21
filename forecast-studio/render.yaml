@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: forecast-studio-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        # Ganti dengan URL GitHub Pages Anda (pisahkan dengan koma jika lebih dari satu)
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        value: dashboard-forecast-demand
+      - key: FIREBASE_STORAGE_BUCKET
+        value: dashboard-forecast-demand.firebasestorage.app
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        # Tempel isi JSON service account Firebase Admin di Dashboard Render (Secret)
+        sync: false
+      - key: REQUIRE_AUTH
+        value: "true"
+      - key: MAX_UPLOAD_MB
+        value: "25"
+      - key: MAX_CONCURRENT_JOBS
+        value: "2"

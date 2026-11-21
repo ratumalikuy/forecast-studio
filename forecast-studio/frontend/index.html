@@ -1,0 +1,2449 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dead Stock Forecast Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="./config.js"></script>
+<style>
+  :root {
+    --bg: #F5F7FB;
+    --panel: #FFFFFF;
+    --border: #E4E8F0;
+    --border-strong: #D3D9E4;
+    --text: #1B2233;
+    --muted: #667085;
+    --faint: #9AA4B2;
+    --accent: #3E63DD;
+    --accent-dim: #EAEFFD;
+    --teal: #0EA5A0;
+    --teal-dim: #E6F7F6;
+    --lumpy: #E5484D;
+    --lumpy-dim: #FBE9E9;
+    --intermittent: #3E63DD;
+    --intermittent-dim: #EAEFFD;
+    --erratic: #8E4EC6;
+    --erratic-dim: #F3EAFB;
+    --smooth: #12A150;
+    --smooth-dim: #E7F7ED;
+    --high: #12A150;
+    --high-dim: #E7F7ED;
+    --medium: #F5A524;
+    --medium-dim: #FDF3E1;
+    --shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.04);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .mono { font-family: 'Roboto Mono', ui-monospace, monospace; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  button { cursor: pointer; font-family: inherit; }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+  input, select { font-family: inherit; }
+
+  #app { display: flex; min-height: 100vh; }
+
+  /* ===== Left Nav ===== */
+  .nav {
+    width: 248px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+  .nav-brand {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-brand-title { font-size: 15px; font-weight: 700; letter-spacing: -0.1px; }
+  .nav-brand-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .nav-workspace-pill {
+    margin: 12px 12px 4px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 11.5px;
+  }
+  .nav-pages { padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 9px 12px; border-radius: 6px;
+    background: transparent; border: none; border-left: 3px solid transparent;
+    text-align: left; font-size: 13.5px; font-weight: 500; color: var(--muted);
+    width: 100%;
+  }
+  .nav-item.active { background: var(--accent-dim); color: var(--accent); border-left: 3px solid var(--accent); font-weight: 600; }
+  .nav-item:hover:not(.active) { background: #F5F7FB; }
+  .nav-count {
+    font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px;
+    background: var(--bg); color: var(--muted); border: 1px solid var(--border);
+  }
+  .nav-item.active .nav-count { background: #fff; color: var(--accent); border-color: #C7D4F9; }
+  .nav-footer { margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--border); font-size: 11px; color: var(--faint); line-height: 1.55; }
+
+  /* ===== Main ===== */
+  .main { flex: 1; overflow-y: auto; min-width: 0; }
+  .topbar {
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    position: sticky; top: 0; z-index: 5; flex-wrap: wrap;
+  }
+  .topbar-title { font-size: 18px; font-weight: 700; }
+  .topbar-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .content { padding: 26px 32px 72px; max-width: 1360px; }
+
+  select.filter-select {
+    background: var(--panel); border: 1px solid var(--border-strong); border-radius: 7px;
+    padding: 8px 32px 8px 12px; font-size: 13px; color: var(--text); font-weight: 500;
+    appearance: none; max-width: 340px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23667085'/></svg>");
+    background-repeat: no-repeat; background-position: right 12px center;
+  }
+
+  /* ===== Cards / KPI ===== */
+  .grid { display: grid; gap: 14px; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 1050px) { .grid-4 { grid-template-columns: repeat(2,1fr); } .grid-3 { grid-template-columns: repeat(1,1fr); } }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: var(--shadow); padding: 18px 20px;
+  }
+  .kpi-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
+  .kpi-value { font-size: 25px; font-weight: 800; letter-spacing: -0.3px; }
+  .kpi-unit { font-size: 12px; color: var(--faint); font-weight: 500; margin-left: 6px; }
+  .kpi-foot { font-size: 11.5px; color: var(--faint); margin-top: 6px; }
+
+  .section { margin-bottom: 28px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .section-title { font-size: 15.5px; font-weight: 700; }
+  .section-desc { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.55; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  }
+  .badge-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .badge-active { background: var(--smooth-dim); color: var(--smooth); }
+  .badge-baseline { background: var(--accent-dim); color: var(--accent); }
+  .badge-history { background: #F1F4F9; color: var(--muted); }
+  .badge-error { background: var(--lumpy-dim); color: var(--lumpy); }
+  .badge-warn { background: var(--medium-dim); color: #9A6700; }
+
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.data-table th {
+    text-align: left; font-size: 11.5px; text-transform: none; color: var(--muted);
+    font-weight: 600; padding: 10px 14px; border-bottom: 1px solid var(--border); white-space: nowrap;
+    background: #FAFBFD;
+  }
+  table.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.data-table tr:last-child td { border-bottom: none; }
+  table.data-table tr.clickable { cursor: pointer; }
+  table.data-table tr.clickable:hover { background: #FAFBFD; }
+
+  .btn {
+    background: var(--accent); color: #fff; border: none; border-radius: 7px;
+    padding: 9px 16px; font-size: 13px; font-weight: 600;
+  }
+  .btn:hover:not(:disabled) { background: #3555C4; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+  .btn-ghost {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border-strong); border-radius: 7px;
+    padding: 8px 15px; font-size: 13px; font-weight: 500;
+  }
+  .btn-ghost:hover:not(:disabled) { background: #FAFBFD; }
+  .btn-danger {
+    background: var(--lumpy-dim); color: var(--lumpy); border: 1px solid #F2B8BA; border-radius: 7px;
+    padding: 6px 12px; font-size: 12px; font-weight: 600;
+  }
+  .btn-danger:hover:not(:disabled) { background: #F8D5D6; }
+  .btn-danger-text { background: none; border: none; color: var(--faint); font-size: 12px; }
+  .btn-danger-text:hover { color: var(--lumpy); }
+
+  input.field {
+    background: var(--panel); border: 1px solid var(--border-strong); border-radius: 7px;
+    padding: 8px 12px; font-size: 13px; color: var(--text); outline: none;
+  }
+  input.field:focus { border-color: var(--accent); }
+  .field-label { font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 500; display: block; }
+
+  .chip {
+    display: inline-flex; align-items: center; padding: 6px 13px; border-radius: 20px;
+    font-size: 12.5px; font-weight: 600; border: 1px solid var(--border-strong); color: var(--muted);
+    background: var(--panel);
+  }
+  .chip.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+  .bars-wrap { display: flex; align-items: flex-end; height: 130px; gap: 2px; }
+  .bar { border-radius: 2px 2px 0 0; flex-shrink: 0; }
+
+  .empty-state { text-align: center; padding: 36px 20px; color: var(--faint); font-size: 13px; }
+  .empty-state-title { font-size: 14px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+
+  .upload-zone {
+    border: 1.5px dashed var(--border-strong); border-radius: 10px; padding: 26px;
+    text-align: center; background: #FAFBFD; transition: all 0.15s ease;
+  }
+  .upload-zone.drag { border-color: var(--accent); background: var(--accent-dim); }
+
+  .callout {
+    display: flex; gap: 12px; padding: 13px 16px; border-radius: 8px; font-size: 12.5px; line-height: 1.55;
+    background: var(--accent-dim); border: 1px solid #C7D4F9; color: #2B4499;
+  }
+  .callout.warn { background: var(--medium-dim); border-color: #F0D089; color: #7A5100; }
+  .callout.err { background: var(--lumpy-dim); border-color: #F2B8BA; color: #9F1D22; }
+  .callout.ok { background: var(--smooth-dim); border-color: #AEE4C4; color: #0E6B36; }
+
+  .progress-track {
+    height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: 6px;
+  }
+  .progress-fill {
+    height: 100%; background: var(--accent); transition: width 0.25s ease;
+  }
+  .progress-fill.saving { background: var(--teal); }
+  .progress-fill.done { background: var(--smooth); }
+  .progress-fill.err { background: var(--lumpy); }
+
+  .spinner {
+    display: inline-block; width: 18px; height: 18px;
+    border: 2.5px solid var(--border-strong); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: var(--text); color: #fff;
+    padding: 12px 18px; border-radius: 8px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    z-index: 50; opacity: 0; transform: translateY(8px); transition: all 0.25s ease; pointer-events: none;
+    max-width: 440px;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .tip { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%; background:var(--border); color:var(--muted); font-size:10px; font-weight:700; margin-left:7px; cursor:help; position:relative; vertical-align:middle; font-style:normal; }
+  .tip:hover::after, .tip:focus::after { content: attr(data-tip); position:absolute; left:-10px; top:130%; width:270px; background:var(--text); color:#fff; font-size:11.5px; font-weight:400; line-height:1.5; padding:9px 11px; border-radius:7px; z-index:40; white-space:normal; text-align:left; box-shadow:0 8px 24px rgba(0,0,0,.2); }
+  details > summary { outline:none; }
+
+  @media (max-width: 820px) {
+    #app { flex-direction: column; }
+    .nav { width:100%; border-right:none; border-bottom:1px solid var(--border); }
+    .nav-pages { flex-direction:row; overflow-x:auto; padding:8px; }
+    .nav-item { white-space:nowrap; width:auto; border-left:none; border-bottom:3px solid transparent; }
+    .nav-item.active { border-left:none; border-bottom:3px solid var(--accent); }
+    .nav-footer, .nav-brand-sub, .nav-workspace-pill { display:none; }
+    .nav-brand { padding:12px 16px; }
+    .topbar { padding:12px 16px; position:static; }
+    .content { padding:18px 14px 60px; }
+    .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   FIREBASE — Auth + Cloud Firestore + Firebase Storage
+   ============================================================ */
+(function () {
+  var cfg = window.APP_CONFIG || {};
+  var sdkVer = cfg.FIREBASE_SDK_VERSION || "12.19.0";
+  var BASE = "https://www.gstatic.com/firebasejs/" + sdkVer + "/";
+  var firebaseConfig = cfg.FIREBASE || {
+    apiKey: "AIzaSyBHHAjOqlzs6SU6EqVuuoViHFgDpLCWA6U",
+    authDomain: "dashboard-forecast-demand.firebaseapp.com",
+    projectId: "dashboard-forecast-demand",
+    storageBucket: "dashboard-forecast-demand.firebasestorage.app",
+    messagingSenderId: "837710819889",
+    appId: "1:837710819889:web:473928afaf0898dccc1b10",
+    measurementId: "G-FFKK3CQNRM"
+  };
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = function () { reject(new Error("Firebase SDK gagal dimuat: " + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  window.__firebaseReady = (async function () {
+    try {
+      await loadScript(BASE + "firebase-app-compat.js");
+      await loadScript(BASE + "firebase-auth-compat.js");
+      await loadScript(BASE + "firebase-firestore-compat.js");
+      try {
+        await loadScript(BASE + "firebase-storage-compat.js");
+      } catch (storageErr) {
+        console.warn("Firebase Storage SDK tidak dapat dimuat:", storageErr);
+      }
+
+      var app = window.firebase.apps && window.firebase.apps.length
+        ? window.firebase.app()
+        : window.firebase.initializeApp(firebaseConfig);
+      var auth = window.firebase.auth();
+      var db = window.firebase.firestore();
+      var storage = typeof window.firebase.storage === "function" ? window.firebase.storage() : null;
+
+      window.firebaseAuth = auth;
+      window.firebaseDb = db;
+      window.firebaseStorage = storage;
+      window.firebaseSignIn = function (authInstance, email, password) {
+        return authInstance.signInWithEmailAndPassword(email, password);
+      };
+      window.firebaseSignOut = function (authInstance) {
+        return authInstance.signOut();
+      };
+      window.firebaseOnAuthStateChanged = function (authInstance, cb) {
+        return authInstance.onAuthStateChanged(cb);
+      };
+
+      return { app: app, auth: auth, db: db, storage: storage };
+    } catch (err) {
+      window.firebaseInitError = err;
+      console.error("Firebase initialization failed:", err);
+      return null;
+    }
+  })();
+})();
+</script>
+
+<script>
+/* ============================================================
+   CANONICAL FORECASTING ENGINE — IDENTIK DENGAN RUMUS EXCEL
+   Diaudit & terverifikasi tepat (<1e-12) terhadap 8 material
+   baseline Excel dan backend Python (app/forecasting.py).
+   - Croston & SBA memperbarui Zt dan Pt HANYA saat demand > 0
+     dengan inisialisasi kejadian pertama (Z = v, P = pq + 1).
+   - TSB memperbarui probabilitas setiap bulan dan mengalikan
+     dengan rata-rata kumulatif demand non-nol.
+   - Grid search: 0,0001..1,0000 step 0,0001 (MSE one-step-ahead).
+   - Aturan evaluasi tanpa data leakage:
+     * > 60 bulan (> 5 tahun) -> Train/Test 50:50 kronologis.
+     * <= 60 bulan (<= 5 tahun) -> Train s.d. sebelum demand
+       aktual terakhir, evaluasi terhadap demand aktual terakhir.
+   ============================================================ */
+var EVAL_LIMIT_MONTHS = 60;
+var MONTH_ID = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Ags","Sep","Okt","Nov","Des"];
+
+function monthToIndex(str) {
+  var p = String(str).split("-").map(Number);
+  return p[0] * 12 + (p[1] - 1);
+}
+function indexToMonth(idx) {
+  var y = Math.floor(idx / 12);
+  var m = (idx % 12) + 1;
+  return y + "-" + String(m).padStart(2, "0");
+}
+function fmtMonth(str) {
+  if (!str || !/^\d{4}-\d{2}$/.test(str)) return str || "-";
+  var p = str.split("-").map(Number);
+  return MONTH_ID[p[1] - 1] + " " + p[0];
+}
+function fmtNum(n, d) {
+  if (n === null || n === undefined || isNaN(n) || !isFinite(n)) return "-";
+  d = d === undefined ? 4 : d;
+  return Number(n).toLocaleString("id-ID", { maximumFractionDigits: d, minimumFractionDigits: 0 });
+}
+function fmtDateTime(val) {
+  if (!val) return "-";
+  try {
+    var dt = val && typeof val.toDate === "function" ? val.toDate() : new Date(val);
+    if (isNaN(dt.getTime())) return String(val);
+    return dt.toLocaleString("id-ID", {
+      year: "numeric", month: "short", day: "2-digit",
+      hour: "2-digit", minute: "2-digit"
+    });
+  } catch (e) {
+    return String(val);
+  }
+}
+function countNonzero(series) {
+  var c = 0;
+  for (var i = 0; i < series.length; i++) if (series[i][1] > 0) c++;
+  return c;
+}
+function classColorVar(cls) {
+  if (cls === "Lumpy") return "lumpy";
+  if (cls === "Intermittent") return "intermittent";
+  if (cls === "Erratic") return "erratic";
+  return "smooth";
+}
+
+function computeADICV2(series) {
+  var N = series.length;
+  var nz = [];
+  for (var i = 0; i < N; i++) if (series[i][1] > 0) nz.push(series[i][1]);
+  var n = nz.length;
+  if (n === 0) return { adi: null, cv2: null, classification: "Tidak ada demand", N: N, n: 0 };
+  var adi = N / n;
+  if (n === 1) return { adi: adi, cv2: 0, classification: adi > 1.32 ? "Intermittent" : "Smooth", N: N, n: 1 };
+  var sum = 0;
+  for (var j = 0; j < n; j++) sum += nz[j];
+  var mean = sum / n;
+  var sq = 0;
+  for (var k = 0; k < n; k++) sq += Math.pow(nz[k] - mean, 2);
+  var std = Math.sqrt(sq / (n - 1));
+  var cv2 = mean > 0 ? Math.pow(std / mean, 2) : 0;
+  var classification;
+  if (adi <= 1.32 && cv2 <= 0.49) classification = "Smooth";
+  else if (adi > 1.32 && cv2 <= 0.49) classification = "Intermittent";
+  else if (adi <= 1.32 && cv2 > 0.49) classification = "Erratic";
+  else classification = "Lumpy";
+  return { adi: adi, cv2: cv2, classification: classification, N: N, n: n };
+}
+
+function xlStates(x, aC, aS, bT) {
+  var qt = 0, ZC = 0, PC = 0, ZS = 0, PS = 0, pr = 0, cs = 0, cc = 0;
+  var Fc = [], Fs = [], Ft = [];
+  for (var i = 0; i < x.length; i++) {
+    var v = x[i], ind = v > 0 ? 1 : 0, pq = qt;
+    qt = v > 0 ? 1 : qt + 1;
+    if (v > 0) {
+      ZC = ZC === 0 ? v : aC * v + (1 - aC) * ZC;
+      PC = PC === 0 ? pq + 1 : aC * pq + (1 - aC) * PC;
+      ZS = ZS === 0 ? v : aS * v + (1 - aS) * ZS;
+      PS = PS === 0 ? pq + 1 : aS * pq + (1 - aS) * PS;
+    }
+    Fc.push(PC === 0 ? 0 : ZC / PC);
+    Fs.push(PS === 0 ? 0 : (1 - aS / 2) * (ZS / PS));
+    pr = (1 - bT) * pr + bT * ind;
+    cs += v; cc += ind;
+    Ft.push((cc === 0 ? 0 : cs / cc) * pr);
+  }
+  return {
+    Fc: Fc, Fs: Fs, Ft: Ft,
+    final: {
+      ZtC: ZC, PtC: PC, Fc: Fc.length ? Fc[Fc.length - 1] : 0,
+      ZtS: ZS, PtS: PS, Fs: Fs.length ? Fs[Fs.length - 1] : 0,
+      ProbT: pr, rata: cc === 0 ? 0 : cs / cc, Ft: Ft.length ? Ft[Ft.length - 1] : 0
+    }
+  };
+}
+
+function xlMse(x, method, a) {
+  var qt = 0, Z = 0, P = 0, pr = 0, cs = 0, cc = 0, prevF = 0, sum = 0, n = 0;
+  for (var j = 0; j < x.length; j++) {
+    var v = x[j];
+    if (j > 0) { var e = v - prevF; sum += e * e; n++; }
+    var pq = qt; qt = v > 0 ? 1 : qt + 1;
+    if (method === "TSB") {
+      var ind = v > 0 ? 1 : 0;
+      pr = (1 - a) * pr + a * ind; cs += v; cc += ind;
+      prevF = (cc === 0 ? 0 : cs / cc) * pr;
+    } else {
+      if (v > 0) {
+        Z = Z === 0 ? v : a * v + (1 - a) * Z;
+        P = P === 0 ? pq + 1 : a * pq + (1 - a) * P;
+      }
+      prevF = P === 0 ? 0 : (method === "SBA" ? (1 - a / 2) * (Z / P) : Z / P);
+    }
+  }
+  return n ? sum / n : Infinity;
+}
+
+function xlGrid(x, method) {
+  var best = 0.0001, bm = Infinity;
+  for (var i = 1; i <= 10000; i++) {
+    var a = i / 10000, e = xlMse(x, method, a);
+    if (e < bm) { bm = e; best = a; }
+  }
+  return best;
+}
+
+function xlTestMetrics(x, F, from, trainX) {
+  var n = 0, sAbs = 0, sSq = 0, sMape = 0, nMape = 0, sSmape = 0, nSmape = 0, sAct = 0;
+  for (var i = Math.max(1, from); i < x.length; i++) {
+    var a = x[i], f = F[i - 1], e = a - f;
+    n++; sAbs += Math.abs(e); sSq += e * e; sAct += Math.abs(a);
+    if (a !== 0) { sMape += Math.abs(e / a); nMape++; }
+    var den = (Math.abs(a) + Math.abs(f)) / 2;
+    if (den !== 0) { sSmape += Math.abs(e) / den; nSmape++; }
+  }
+  var nAbs = 0, nSq = 0;
+  for (var j = 1; j < trainX.length; j++) {
+    var d = trainX[j] - trainX[j - 1];
+    nAbs += Math.abs(d); nSq += d * d;
+  }
+  var nd = trainX.length > 1 ? nAbs / (trainX.length - 1) : 0;
+  var nq = trainX.length > 1 ? nSq / (trainX.length - 1) : 0;
+  var mad = n ? sAbs / n : null, mse = n ? sSq / n : null;
+  return {
+    n: n, mad: mad, mse: mse,
+    mape: nMape ? (sMape / nMape) * 100 : null,
+    smape: nSmape ? (sSmape / nSmape) * 100 : null,
+    wape: sAct !== 0 ? (sAbs / sAct) * 100 : null,
+    mase: nd > 0 && mad !== null ? mad / nd : null,
+    rmsse: nq > 0 && mse !== null ? Math.sqrt(mse / nq) : null
+  };
+}
+
+function evalPctError(actual, forecast) {
+  return actual > 0 ? Math.abs(actual - forecast) / actual * 100 : null;
+}
+
+function evalTrainTest(series) {
+  var x = series.map(function (r) { return r[1]; });
+  var N = x.length, trainSize = Math.ceil(N / 2), testSize = N - trainSize;
+  if (testSize < 1 || trainSize < 3) return { mode: "traintest", insufficient: true, N: N, warnings: ["Data historis terlalu pendek untuk evaluasi Train/Test 50:50."] };
+  var train = x.slice(0, trainSize);
+  var aC = xlGrid(train, "Croston"), aS = xlGrid(train, "SBA"), bT = xlGrid(train, "TSB");
+  var st = xlStates(x, aC, aS, bT);
+  var rows = [];
+  for (var i = trainSize; i < N; i++) {
+    rows.push({ m: series[i][0], actual: x[i], Croston: st.Fc[i - 1], SBA: st.Fs[i - 1], TSB: st.Ft[i - 1] });
+  }
+  var metrics = {
+    Croston: xlTestMetrics(x, st.Fc, trainSize, train),
+    SBA: xlTestMetrics(x, st.Fs, trainSize, train),
+    TSB: xlTestMetrics(x, st.Ft, trainSize, train)
+  };
+  var bestTest = null;
+  ["Croston", "SBA", "TSB"].forEach(function (k) {
+    var v = metrics[k].mase;
+    if (v !== null && (bestTest === null || v < metrics[bestTest].mase)) bestTest = k;
+  });
+  var warnings = [];
+  var nzTest = countNonzero(series.slice(trainSize));
+  if (nzTest < 3) warnings.push("Periode Test hanya memiliki " + nzTest + " kejadian demand (>0); perlakukan metrik uji sebagai indikasi awal.");
+  return {
+    mode: "traintest", insufficient: false, N: N, trainSize: trainSize, testSize: testSize,
+    trainRange: [series[0][0], series[trainSize - 1][0]], testRange: [series[trainSize][0], series[N - 1][0]],
+    nzTrain: countNonzero(series.slice(0, trainSize)), nzTest: nzTest,
+    zerosTrain: train.filter(function (v) { return v === 0; }).length,
+    params: { Croston: aC, SBA: aS, TSB: bT }, metrics: metrics, rows: rows, bestTest: bestTest, warnings: warnings
+  };
+}
+
+function evalLastDemand(series) {
+  var x = series.map(function (r) { return r[1]; }), N = x.length;
+  var warnings = [];
+  if (series.length && String(series[0][0]).indexOf("2020-") !== 0) {
+    warnings.push("Data dimulai pada " + series[0][0] + " (bukan tahun 2020). Aturan evaluasi <=5 tahun tetap memakai awal data tersedia hingga bulan sebelum demand aktual terakhir.");
+  }
+  var L = -1;
+  for (var i = N - 1; i >= 0; i--) { if (x[i] > 0) { L = i; break; } }
+  if (L < 3) return { mode: "lastdemand", insufficient: true, N: N, warnings: warnings.concat(["Periode pelatihan sebelum demand aktual terakhir kurang dari 3 bulan."]) };
+  var train = x.slice(0, L);
+  var aC = xlGrid(train, "Croston"), aS = xlGrid(train, "SBA"), bT = xlGrid(train, "TSB");
+  var st = xlStates(train, aC, aS, bT);
+  var actual = x[L], res = {};
+  [["Croston", st.Fc], ["SBA", st.Fs], ["TSB", st.Ft]].forEach(function (p) {
+    var f = p[1][L - 1];
+    res[p[0]] = { forecast: f, diff: actual - f, absErr: Math.abs(actual - f), pct: evalPctError(actual, f) };
+  });
+  var bestAbs = null;
+  ["Croston", "SBA", "TSB"].forEach(function (k) {
+    if (bestAbs === null || res[k].absErr < res[bestAbs].absErr) bestAbs = k;
+  });
+  return {
+    mode: "lastdemand", insufficient: false, N: N, trainSize: L,
+    trainRange: [series[0][0], series[L - 1][0]], targetMonth: series[L][0], actual: actual,
+    nzTrain: countNonzero(series.slice(0, L)), zerosTrain: train.filter(function (v) { return v === 0; }).length,
+    trailingZeros: N - 1 - L, params: { Croston: aC, SBA: aS, TSB: bT }, results: res, bestAbs: bestAbs, warnings: warnings
+  };
+}
+
+function generateExcelProjection(series, finalState, bestMethod, horizonMonths) {
+  var interval, qty, nextForecast;
+  if (bestMethod === "Croston") { interval = finalState.PtC; qty = finalState.ZtC; nextForecast = finalState.Fc; }
+  else if (bestMethod === "SBA") { interval = finalState.PtS; qty = finalState.ZtS; nextForecast = finalState.Fs; }
+  else { interval = finalState.ProbT > 0 ? 1 / finalState.ProbT : 0; qty = finalState.rata; nextForecast = finalState.Ft; }
+  var intervalRounded = interval > 0 ? Math.max(1, Math.round(interval)) : 0;
+  var preds = [], nextMonth = null;
+  if (intervalRounded > 0 && series.length) {
+    var lastIdx = monthToIndex(series[series.length - 1][0]);
+    var idx = lastIdx + intervalRounded;
+    var endIdx = lastIdx + horizonMonths;
+    nextMonth = indexToMonth(idx);
+    while (idx <= endIdx) {
+      preds.push([indexToMonth(idx), qty]);
+      idx += intervalRounded;
+    }
+  }
+  return { nextForecast: nextForecast, interval: interval, nextMonth: nextMonth, nextQty: qty, predictions: preds };
+}
+
+function analyzeMaterialExcelVerified(name, series) {
+  series = series.slice().sort(function (a, b) { return a[0] < b[0] ? -1 : 1; });
+  var x = series.map(function (r) { return r[1]; });
+  var cls = computeADICV2(series);
+  var alphaC = xlGrid(x, "Croston");
+  var alphaS = xlGrid(x, "SBA");
+  var betaT = xlGrid(x, "TSB");
+  var st = xlStates(x, alphaC, alphaS, betaT);
+  var metrics = {
+    Croston: xlTestMetrics(x, st.Fc, 1, x),
+    SBA: xlTestMetrics(x, st.Fs, 1, x),
+    TSB: xlTestMetrics(x, st.Ft, 1, x)
+  };
+  var bestMethod = "Croston";
+  ["SBA", "TSB"].forEach(function (k) {
+    if (metrics[k].mase !== null && (metrics[bestMethod].mase === null || metrics[k].mase < metrics[bestMethod].mase)) {
+      bestMethod = k;
+    }
+  });
+  var horizonMonths = series.length;
+  var proj = generateExcelProjection(series, st.final, bestMethod, horizonMonths);
+  var evaluation = series.length > EVAL_LIMIT_MONTHS ? evalTrainTest(series) : evalLastDemand(series);
+
+  return {
+    name: name, classification: cls.classification, adi: cls.adi, cv2: cls.cv2,
+    range: series[0][0] + " s.d. " + series[series.length - 1][0] + " (aktual)",
+    alphaC: alphaC, alphaS: alphaS, betaT: betaT, bestMethod: bestMethod,
+    selectionBasis: "mase_in_sample", source: "js_local_preview", formulaVersion: "excel-verified-v1",
+    metrics: metrics, data: series.map(function (r) { return [r[0], r[1]]; }),
+    predictions: proj.predictions, nextForecast: proj.nextForecast, interval: proj.interval,
+    nextMonth: proj.nextMonth, nextQty: proj.nextQty, evaluation: evaluation,
+    horizonMonths: horizonMonths, custom: true, gridStep: 0.0001
+  };
+}
+
+function evaluationFor(m) {
+  if (m.evaluation) return m.evaluation;
+  if (!m._eval) m._eval = m.data.length > EVAL_LIMIT_MONTHS ? evalTrainTest(m.data) : evalLastDemand(m.data);
+  return m._eval;
+}
+function evalSummaryText(m) {
+  var ev = evaluationFor(m);
+  if (!ev || ev.insufficient) return "tidak cukup data";
+  return ev.mode === "traintest"
+    ? "Train/Test 50:50 (" + ev.trainSize + " / " + ev.testSize + " bln)"
+    : "Demand terakhir (target " + ev.targetMonth + ")";
+}
+
+/* ============================================================
+   EMBEDDED VERIFIED BASELINE — 8 MATERIAL UJI EXCEL (IMMUTABLE)
+   ============================================================ */
+var DEFAULT_DATA = {"000586917":{"name":"Ballast, Lamp","data":[["2020-01",0],["2020-02",0],["2020-03",0],["2020-04",0],["2020-05",0],["2020-06",0],["2020-07",0],["2020-08",15],["2020-09",0],["2020-10",0],["2020-11",10],["2020-12",0],["2021-01",0],["2021-02",0],["2021-03",0],["2021-04",15],["2021-05",0],["2021-06",0],["2021-07",0],["2021-08",0],["2021-09",0],["2021-10",0],["2021-11",0],["2021-12",0],["2022-01",0],["2022-02",5],["2022-03",30],["2022-04",0],["2022-05",0],["2022-06",0],["2022-07",0],["2022-08",0],["2022-09",0],["2022-10",0],["2022-11",0],["2022-12",0],["2023-01",0],["2023-02",0],["2023-03",0],["2023-04",0],["2023-05",15],["2023-06",0],["2023-07",0],["2023-08",5],["2023-09",0],["2023-10",5],["2023-11",0],["2023-12",0],["2024-01",0],["2024-02",20]]},"000573824":{"name":"Differential Pressure","data":[["2020-01",0],["2020-02",0],["2020-03",0],["2020-04",0],["2020-05",0],["2020-06",0],["2020-07",0],["2020-08",0],["2020-09",0],["2020-10",1],["2020-11",0],["2020-12",0],["2021-01",0],["2021-02",0],["2021-03",0],["2021-04",1],["2021-05",0],["2021-06",0],["2021-07",0],["2021-08",0],["2021-09",2],["2021-10",0],["2021-11",0],["2021-12",0],["2022-01",0],["2022-02",0],["2022-03",0],["2022-04",0],["2022-05",0],["2022-06",0],["2022-07",0],["2022-08",0],["2022-09",0],["2022-10",0],["2022-11",0],["2022-12",2],["2023-01",0],["2023-02",0],["2023-03",1],["2023-04",0],["2023-05",1],["2023-06",0],["2023-07",0],["2023-08",0],["2023-09",2],["2023-10",0],["2023-11",0],["2023-12",0],["2024-01",0],["2024-02",1],["2024-03",0],["2024-04",0],["2024-05",0],["2024-06",0],["2024-07",0],["2024-08",1]]},"000733857":{"name":"Seal, Ring","data":[["2020-01",0],["2020-02",0],["2020-03",0],["2020-04",0],["2020-05",0],["2020-06",0],["2020-07",0],["2020-08",10],["2020-09",0],["2020-10",0],["2020-11",0],["2020-12",0],["2021-01",0],["2021-02",0],["2021-03",0],["2021-04",0],["2021-05",0],["2021-06",0],["2021-07",0],["2021-08",0],["2021-09",0],["2021-10",2],["2021-11",8],["2021-12",0],["2022-01",0],["2022-02",0],["2022-03",0],["2022-04",0],["2022-05",0],["2022-06",0],["2022-07",0],["2022-08",0],["2022-09",0],["2022-10",0],["2022-11",0],["2022-12",0],["2023-01",0],["2023-02",0],["2023-03",0],["2023-04",0],["2023-05",0],["2023-06",0],["2023-07",0],["2023-08",0],["2023-09",0],["2023-10",0],["2023-11",0],["2023-12",0],["2024-01",0],["2024-02",0],["2024-03",0],["2024-04",0],["2024-05",0],["2024-06",0],["2024-07",0],["2024-08",0],["2024-09",0],["2024-10",0],["2024-11",0],["2024-12",0],["2025-01",0],["2025-02",0],["2025-03",0],["2025-04",0],["2025-05",0],["2025-06",0],["2025-07",0],["2025-08",0],["2025-09",0],["2025-10",1]]},"000733824":{"name":"Seal, Ring","data":[["2020-01",0],["2020-02",0],["2020-03",0],["2020-04",0],["2020-05",0],["2020-06",0],["2020-07",0],["2020-08",10],["2020-09",0],["2020-10",0],["2020-11",0],["2020-12",0],["2021-01",0],["2021-02",0],["2021-03",0],["2021-04",0],["2021-05",0],["2021-06",0],["2021-07",0],["2021-08",0],["2021-09",0],["2021-10",2],["2021-11",8],["2021-12",0],["2022-01",0],["2022-02",0],["2022-03",0],["2022-04",0],["2022-05",0],["2022-06",0],["2022-07",0],["2022-08",0],["2022-09",0],["2022-10",0],["2022-11",0],["2022-12",0],["2023-01",0],["2023-02",0],["2023-03",0],["2023-04",0],["2023-05",0],["2023-06",0],["2023-07",0],["2023-08",0],["2023-09",0],["2023-10",0],["2023-11",0],["2023-12",0],["2024-01",0],["2024-02",0],["2024-03",0],["2024-04",0],["2024-05",0],["2024-06",0],["2024-07",0],["2024-08",0],["2024-09",0],["2024-10",0],["2024-11",0],["2024-12",0],["2025-01",0],["2025-02",0],["2025-03",0],["2025-04",0],["2025-05",0],["2025-06",0],["2025-07",0],["2025-08",0],["2025-09",0],["2025-10",1]]},"000593236":{"name":"Carbon Dioxida","data":[["2020-01",0],["2020-02",0],["2020-03",0],["2020-04",0],["2020-05",0],["2020-06",0],["2020-07",0],["2020-08",3000],["2020-09",1460],["2020-10",0],["2020-11",0],["2020-12",0],["2021-01",6310],["2021-02",0],["2021-03",0],["2021-04",0],["2021-05",0],["2021-06",0],["2021-07",0],["2021-08",0],["2021-09",0],["2021-10",0],["2021-11",0],["2021-12",0],["2022-01",0],["2022-02",0],["2022-03",5000],["2022-04",1300],["2022-05",0],["2022-06",0],["2022-07",0],["2022-08",0],["2022-09",0],["2022-10",0],["2022-11",0],["2022-12",0],["2023-01",0],["2023-02",0],["2023-03",0],["2023-04",0],["2023-05",0],["2023-06",0],["2023-07",0],["2023-08",0],["2023-09",3000],["2023-10",4500],["2023-11",2550],["2023-12",0],["2024-01",4500]]},"000941252":{"name":"Mercury, ACS","data":[["2020-01",0],["2020-02",0],["2020-03",0],["2020-04",0],["2020-05",0],["2020-06",0],["2020-07",0],["2020-08",0],["2020-09",0],["2020-10",0],["2020-11",0],["2020-12",0],["2021-01",0],["2021-02",0],["2021-03",0],["2021-04",600],["2021-05",0],["2021-06",400],["2021-07",200],["2021-08",0],["2021-09",200],["2021-10",400],["2021-11",0],["2021-12",200],["2022-01",0],["2022-02",0],["2022-03",0],["2022-04",0],["2022-05",600],["2022-06",0],["2022-07",0],["2022-08",0],["2022-09",0],["2022-10",0],["2022-11",0],["2022-12",0],["2023-01",0],["2023-02",0],["2023-03",0],["2023-04",0],["2023-05",0],["2023-06",0],["2023-07",0],["2023-08",0],["2023-09",0],["2023-10",0],["2023-11",0],["2023-12",0],["2024-01",0],["2024-02",0],["2024-03",0],["2024-04",0],["2024-05",0],["2024-06",0],["2024-07",0],["2024-08",0],["2024-09",0],["2024-10",0],["2024-11",0],["2024-12",0],["2025-01",400]]},"000777540":{"name":"Trap, Steam","data":[["2020-01",0],["2020-02",0],["2020-03",0],["2020-04",0],["2020-05",0],["2020-06",0],["2020-07",1],["2020-08",0],["2020-09",0],["2020-10",0],["2020-11",0],["2020-12",0],["2021-01",0],["2021-02",0],["2021-03",0],["2021-04",0],["2021-05",0],["2021-06",0],["2021-07",0],["2021-08",0],["2021-09",0],["2021-10",0],["2021-11",0],["2021-12",0],["2022-01",2],["2022-02",0],["2022-03",0],["2022-04",0],["2022-05",0],["2022-06",0],["2022-07",3],["2022-08",0],["2022-09",0],["2022-10",0],["2022-11",0],["2022-12",0],["2023-01",0],["2023-02",0],["2023-03",0],["2023-04",0],["2023-05",1],["2023-06",1],["2023-07",2],["2023-08",0],["2023-09",0],["2023-10",0],["2023-11",0],["2023-12",4],["2024-01",0],["2024-02",0],["2024-03",0],["2024-04",0],["2024-05",0],["2024-06",0],["2024-07",0],["2024-08",0],["2024-09",0],["2024-10",0],["2024-11",0],["2024-12",0],["2025-01",0],["2025-02",0],["2025-03",0],["2025-04",0],["2025-05",2],["2025-06",1]]},"000738377":{"name":"Pump, Positive Displacement","data":[["2020-01",0],["2020-02",0],["2020-03",0],["2020-04",0],["2020-05",0],["2020-06",0],["2020-07",1],["2020-08",0],["2020-09",0],["2020-10",0],["2020-11",0],["2020-12",0],["2021-01",0],["2021-02",0],["2021-03",0],["2021-04",0],["2021-05",0],["2021-06",0],["2021-07",0],["2021-08",0],["2021-09",0],["2021-10",0],["2021-11",0],["2021-12",0],["2022-01",0],["2022-02",0],["2022-03",0],["2022-04",0],["2022-05",0],["2022-06",1],["2022-07",0],["2022-08",0],["2022-09",0],["2022-10",0],["2022-11",0],["2022-12",0],["2023-01",0],["2023-02",0],["2023-03",0],["2023-04",0],["2023-05",0],["2023-06",0],["2023-07",0],["2023-08",0],["2023-09",0],["2023-10",0],["2023-11",0],["2023-12",0],["2024-01",0],["2024-02",0],["2024-03",0],["2024-04",0],["2024-05",0],["2024-06",0],["2024-07",0],["2024-08",0],["2024-09",0],["2024-10",0],["2024-11",0],["2024-12",0],["2025-01",0],["2025-02",0],["2025-03",0],["2025-04",0],["2025-05",0],["2025-06",1],["2025-07",0],["2025-08",0],["2025-09",0],["2025-10",0],["2025-11",0],["2025-12",0],["2026-01",1]]}};
+var EXCEL_RESULTS = {"000586917":{"name":"Ballast, Lamp","classification":"Intermittent","range":"2020-01 s.d. 2024-02 (aktual)","alphaC":0.0001,"alphaS":0.0001,"betaT":0.0609,"metrics":{"Croston":{"mad":3.44398725345177,"mse":38.8553895288541,"mape":80.9014439962642,"smape":187.507828635293,"wape":140.629479515947,"mase":0.803597025805414,"rmsse":0.727231066541259},"SBA":{"mad":3.44393750306869,"mse":38.8554899471354,"mape":80.9023989240643,"smape":187.508321341557,"wape":140.627448041972,"mase":0.803585417382695,"rmsse":0.727232006272497},"TSB":{"mad":3.43511953625244,"mse":40.1549780921084,"mape":84.068956360166,"smape":189.529583300256,"wape":140.267381063641,"mase":0.801527891792236,"rmsse":0.739292816464437}},"bestMethod":"TSB","bestMse":"Croston","bestMape":"Croston","horizonMonths":50,"nextForecast":3.05684316266451,"interval":4.36179830754264,"nextMonth":"2024-06","nextQty":13.3333333333333,"predictions":[["2024-06",13.3333333333333],["2024-10",13.3333333333333],["2025-02",13.3333333333333],["2025-06",13.3333333333333],["2025-10",13.3333333333333],["2026-02",13.3333333333333],["2026-06",13.3333333333333],["2026-10",13.3333333333333],["2027-02",13.3333333333333],["2027-06",13.3333333333333],["2027-10",13.3333333333333],["2028-02",13.3333333333333]],"data":DEFAULT_DATA["000586917"].data},"000573824":{"name":"Differential Pressure","classification":"Intermittent","range":"2020-01 s.d. 2024-08 (aktual)","alphaC":0.3265,"alphaS":0.3589,"betaT":0.0504,"metrics":{"Croston":{"mad":0.318612299205555,"mse":0.286251845759059,"mape":86.3183428080824,"smape":191.174221610297,"wape":146.03063713588,"mase":0.761898976361111,"rmsse":0.670689443073283},"SBA":{"mad":0.304081620981635,"mse":0.288634396830336,"mape":88.3769831964558,"smape":192.331241990432,"wape":139.370742949916,"mase":0.727151702347389,"rmsse":0.673474823491006},"TSB":{"mad":0.299101858591515,"mse":0.295276916453821,"mape":89.1214369044185,"smape":192.848860761363,"wape":137.088351854444,"mase":0.715243574892754,"rmsse":0.681180286707463}},"bestMethod":"TSB","bestMse":"Croston","bestMape":"Croston","horizonMonths":56,"nextForecast":0.262958497979836,"interval":5.07050862997998,"nextMonth":"2025-01","nextQty":1.33333333333333,"predictions":[["2025-01",1.33333333333333],["2025-06",1.33333333333333],["2025-11",1.33333333333333],["2026-04",1.33333333333333],["2026-09",1.33333333333333],["2027-02",1.33333333333333],["2027-07",1.33333333333333],["2027-12",1.33333333333333],["2028-05",1.33333333333333],["2028-10",1.33333333333333],["2029-03",1.33333333333333]],"data":DEFAULT_DATA["000573824"].data},"000733857":{"name":"Seal, Ring","classification":"Lumpy","range":"2020-01 s.d. 2025-10 (aktual)","alphaC":0.258,"alphaS":0.4475,"betaT":0.0118,"metrics":{"Croston":{"mad":1.21844591888681,"mse":3.27874145756074,"mape":58.854159761299,"smape":193.912409897842,"wape":400.346516205667,"mase":2.27223698387,"rmsse":0.861247970939942},"SBA":{"mad":1.03445209081996,"mse":2.97069047585419,"mape":64.6358883679286,"smape":194.620214719179,"wape":339.891401269416,"mase":1.92911335855615,"rmsse":0.819791342572716},"TSB":{"mad":0.434692940653313,"mse":2.43255450657063,"mape":95.1089871255366,"smape":198.86817710911,"wape":142.827680500374,"mase":0.810643592029151,"rmsse":0.741832602197552}},"bestMethod":"TSB","bestMse":"TSB","bestMape":"Croston","horizonMonths":70,"nextForecast":0.162130413653576,"interval":32.3813396986557,"nextMonth":"2028-06","nextQty":5.25,"predictions":[["2028-06",5.25],["2031-02",5.25]],"data":DEFAULT_DATA["000733857"].data},"000733824":{"name":"Seal, Ring","classification":"Lumpy","range":"2020-01 s.d. 2025-10 (aktual)","alphaC":0.258,"alphaS":0.4475,"betaT":0.0118,"metrics":{"Croston":{"mad":1.21844591888681,"mse":3.27874145756074,"mape":58.854159761299,"smape":193.912409897842,"wape":400.346516205667,"mase":2.27223698387,"rmsse":0.861247970939942},"SBA":{"mad":1.03445209081996,"mse":2.97069047585419,"mape":64.6358883679286,"smape":194.620214719179,"wape":339.891401269416,"mase":1.92911335855615,"rmsse":0.819791342572716},"TSB":{"mad":0.434692940653313,"mse":2.43255450657063,"mape":95.1089871255366,"smape":198.86817710911,"wape":142.827680500374,"mase":0.810643592029151,"rmsse":0.741832602197552}},"bestMethod":"TSB","bestMse":"TSB","bestMape":"Croston","horizonMonths":70,"nextForecast":0.162130413653576,"interval":32.3813396986557,"nextMonth":"2028-06","nextQty":5.25,"predictions":[["2028-06",5.25],["2031-02",5.25]],"data":DEFAULT_DATA["000733824"].data},"000593236":{"name":"Carbon Dioxida","classification":"Intermittent","range":"2020-01 s.d. 2024-01 (aktual)","alphaC":0.1266,"alphaS":0.9843,"betaT":0.2282,"metrics":{"Croston":{"mad":907.789959327656,"mse":2440972.35854849,"mape":85.5172399972622,"smape":189.707186057855,"wape":137.804927412168,"mase":1.03451847216827,"rmsse":0.817496351408729},"SBA":{"mad":1018.95301653947,"mse":2374149.70639584,"mape":80.4888669001687,"smape":187.651636944447,"wape":154.67977480675,"mase":1.1612000188484,"rmsse":0.80622905010175},"TSB":{"mad":865.97042161575,"mse":2431800.21203564,"mape":74.1731174215357,"smape":185.102770171319,"wape":131.456610491954,"mase":0.986860879334188,"rmsse":0.815959002304028}},"bestMethod":"TSB","bestMse":"SBA","bestMape":"TSB","horizonMonths":49,"nextForecast":1938.68044517995,"interval":1.81222921088846,"nextMonth":"2024-03","nextQty":3513.33333333333,"predictions":[["2024-03",3513.33333333333],["2024-05",3513.33333333333],["2024-07",3513.33333333333],["2024-09",3513.33333333333],["2024-11",3513.33333333333],["2025-01",3513.33333333333],["2025-03",3513.33333333333],["2025-05",3513.33333333333],["2025-07",3513.33333333333],["2025-09",3513.33333333333],["2025-11",3513.33333333333],["2026-01",3513.33333333333],["2026-03",3513.33333333333],["2026-05",3513.33333333333],["2026-07",3513.33333333333],["2026-09",3513.33333333333],["2026-11",3513.33333333333],["2027-01",3513.33333333333],["2027-03",3513.33333333333],["2027-05",3513.33333333333],["2027-07",3513.33333333333],["2027-09",3513.33333333333],["2027-11",3513.33333333333],["2028-01",3513.33333333333]],"data":DEFAULT_DATA["000593236"].data},"000941252":{"name":"Mercury, ACS","classification":"Intermittent","range":"2020-01 s.d. 2025-01 (aktual)","alphaC":0.0001,"alphaS":0.0001,"betaT":0.1533,"metrics":{"Croston":{"mad":69.3799740826795,"mse":20054.749796841,"mape":88.6706182398504,"smape":193.132798881605,"wape":138.759948165359,"mase":0.867249676033494,"rmsse":0.746375497484734},"SBA":{"mad":69.3790050839754,"mse":20054.7943050417,"mape":88.6711847089384,"smape":193.133098629742,"wape":138.758010167951,"mase":0.867237563549693,"rmsse":0.746376325712768},"TSB":{"mad":69.3285170350681,"mse":19546.9194528514,"mape":65.1288342335089,"smape":184.448805403916,"wape":138.657034070136,"mase":0.866606462938351,"rmsse":0.736864970534919}},"bestMethod":"TSB","bestMse":"TSB","bestMape":"TSB","horizonMonths":61,"nextForecast":58.1803728934579,"interval":6.44547261129993,"nextMonth":"2025-07","nextQty":375,"predictions":[["2025-07",375],["2026-01",375],["2026-07",375],["2027-01",375],["2027-07",375],["2028-01",375],["2028-07",375],["2029-01",375],["2029-07",375],["2030-01",375]],"data":DEFAULT_DATA["000941252"].data},"000777540":{"name":"Trap, Steam","classification":"Intermittent","range":"2020-01 s.d. 2025-06 (aktual)","alphaC":0.1046,"alphaS":1,"betaT":0.0657,"metrics":{"Croston":{"mad":0.382530074872545,"mse":0.575057949062837,"mape":89.91328404421,"smape":194.689695116379,"wape":146.261499215973,"mase":0.920905735804274,"rmsse":0.725576669045498},"SBA":{"mad":0.442403935933348,"mse":0.565763396660826,"mape":87.6327074039492,"smape":193.849961022375,"wape":169.154446092162,"mase":1.06504651243213,"rmsse":0.719689103289548},"TSB":{"mad":0.378995780338703,"mse":0.580185836229633,"mape":89.1162338923843,"smape":194.461278497807,"wape":144.910151305975,"mase":0.912397248963545,"rmsse":0.728804532952753}},"bestMethod":"TSB","bestMse":"SBA","bestMape":"SBA","horizonMonths":66,"nextForecast":0.370956160311692,"interval":5.09194641032992,"nextMonth":"2025-11","nextQty":1.88888888888889,"predictions":[["2025-11",1.88888888888889],["2026-04",1.88888888888889],["2026-09",1.88888888888889],["2027-02",1.88888888888889],["2027-07",1.88888888888889],["2027-12",1.88888888888889],["2028-05",1.88888888888889],["2028-10",1.88888888888889],["2029-03",1.88888888888889],["2029-08",1.88888888888889],["2030-01",1.88888888888889],["2030-06",1.88888888888889],["2030-11",1.88888888888889]],"data":DEFAULT_DATA["000777540"].data},"000738377":{"name":"Pump, Positive Displacement","classification":"Intermittent","range":"2020-01 s.d. 2026-01 (aktual)","alphaC":1,"alphaS":1,"betaT":0.0219,"metrics":{"Croston":{"mad":0.119682635534085,"mse":0.0571474382877456,"mape":94.6471704623879,"smape":198.843619739142,"wape":215.428743961353,"mase":1.23102139406487,"rmsse":0.766682608638177},"SBA":{"mad":0.0876190955448202,"mse":0.0544666291448219,"mape":97.3235852311939,"smape":199.393182731055,"wape":157.714371980676,"mase":0.901224982746722,"rmsse":0.748483924670127},"TSB":{"mad":0.0750077254162982,"mse":0.0543500224631497,"mape":98.4346262484311,"smape":199.635075477777,"wape":135.013905749337,"mase":0.771508032853353,"rmsse":0.747682287123422}},"bestMethod":"TSB","bestMse":"TSB","bestMape":"Croston","horizonMonths":73,"nextForecast":0.0541852837508324,"interval":18.4551954105922,"nextMonth":"2027-07","nextQty":1,"predictions":[["2027-07",1],["2029-01",1],["2030-07",1],["2032-01",1]],"data":DEFAULT_DATA["000738377"].data}};
+
+var EXPECTED_CODES = ["000586917", "000573824", "000733857", "000733824", "000593236", "000941252", "000777540", "000738377"];
+var EXCLUDED_CODES = ["000670232", "000570416", "000841478", "000974824", "000862094", "000670257"];
+
+function buildExcelMaterial(code) {
+  var r = EXCEL_RESULTS[code];
+  var cls = computeADICV2(r.data);
+  return {
+    stockCode: code,
+    name: r.name, classification: r.classification, adi: cls.adi, cv2: cls.cv2, range: r.range,
+    alphaC: r.alphaC, alphaS: r.alphaS, betaT: r.betaT, bestMethod: r.bestMethod,
+    bestMse: r.bestMse, bestMape: r.bestMape,
+    selectionBasis: "excel", source: "excel", formulaVersion: "excel-verified-v1",
+    metrics: JSON.parse(JSON.stringify(r.metrics)),
+    data: r.data.map(function (d) { return [d[0], d[1]]; }),
+    predictions: r.predictions.map(function (p) { return [p[0], p[1]]; }),
+    horizonMonths: r.horizonMonths, custom: false, gridStep: 0.0001,
+    nextForecast: r.nextForecast, nextMonth: r.nextMonth, nextQty: r.nextQty, interval: r.interval
+  };
+}
+</script>
+
+<script>
+/* ============================================================
+   WORKSPACE STATE & FIREBASE REAL-TIME SYNC (CROSS-DEVICE)
+   - Sumber kebenaran data: Cloud Firestore (users/{uid}/...)
+   - localStorage HANYA dipakai untuk preferensi UI / override URL API dev.
+   ============================================================ */
+var UI_PREF_API_KEY = "forecast_ui_api_override";
+
+var state = {
+  page: "overview",
+  user: null,
+  workspaceLoading: false,
+  workspaceError: null,
+  syncLive: false,
+  activeDatasetId: "baseline",
+  activeDatasetMeta: null,
+  lastSelfActivatedDatasetId: null,
+  datasets: [],            // Riwayat dataset milik UID dari Firestore onSnapshot
+  detailDatasetId: null,   // Dataset yang sedang dibuka detailnya di halaman Datasets
+  builtin: {},
+  materials: {},
+  selected: EXPECTED_CODES[0],
+  filterClass: "Semua",
+  searchQuery: "",
+  pageLimit: 50,
+  localPreviewOnly: false  // True hanya jika user menjalankan preview CSV offline tanpa backend
+};
+
+EXPECTED_CODES.forEach(function (code) { state.builtin[code] = buildExcelMaterial(code); });
+state.materials = state.builtin;
+
+state.integrity = (function () {
+  var keys = Object.keys(state.builtin), checks = [];
+  var add = function (name, res, ok) { checks.push({ name: name, res: res, ok: ok }); };
+  add("Jumlah material baseline Excel", keys.length + " material (harus 8)", keys.length === 8);
+  add("Kode material sesuai daftar", keys.join(", "), keys.join(",") === EXPECTED_CODES.join(","));
+  var leaked = EXCLUDED_CODES.filter(function (c) { return keys.indexOf(c) >= 0 || EXCEL_RESULTS[c] || DEFAULT_DATA[c]; });
+  add("Tidak ada 6 material yang dikeluarkan", leaked.length ? "ditemukan: " + leaked.join(", ") : "bersih (0 material dikeluarkan)", leaked.length === 0);
+  var bad = keys.filter(function (c) { return JSON.stringify(state.builtin[c].data) !== JSON.stringify(DEFAULT_DATA[c].data); });
+  add("Data historis bulanan = acuan tertanam", bad.length ? "berbeda: " + bad.join(", ") : "identik untuk 8 material", bad.length === 0);
+  return { ok: checks.every(function (c) { return c.ok; }), checks: checks };
+})();
+
+var syncUnsubs = [];
+var activeLoadSeq = 0;
+
+function stopWorkspaceSync() {
+  syncUnsubs.forEach(function (fn) { try { fn(); } catch (e) {} });
+  syncUnsubs = [];
+  state.syncLive = false;
+}
+
+function resetWorkspaceMemory() {
+  stopWorkspaceSync();
+  activeLoadSeq++;
+  if (bb.pollTimer) { clearTimeout(bb.pollTimer); bb.pollTimer = null; }
+  bb.busy = false;
+  bb.uploading = false;
+  bb.pendingUpload = null;
+  bb.report = null;
+  bb.prog = null;
+  bb.status = "";
+  bb.color = "";
+  state.user = null;
+  state.workspaceLoading = false;
+  state.workspaceError = null;
+  state.activeDatasetId = "baseline";
+  state.activeDatasetMeta = null;
+  state.lastSelfActivatedDatasetId = null;
+  state.datasets = [];
+  state.detailDatasetId = null;
+  state.materials = state.builtin;
+  state.selected = EXPECTED_CODES[0];
+  state.filterClass = "Semua";
+  state.searchQuery = "";
+  state.localPreviewOnly = false;
+}
+
+function decodeFlatPairs(arr) {
+  var out = [];
+  (arr || []).forEach(function (item) {
+    if (typeof item === "string" && item.indexOf("|") > 0) {
+      var p = item.split("|");
+      out.push([p[0], Number(p[1])]);
+    } else if (Array.isArray(item) && item.length === 2) {
+      out.push([String(item[0]), Number(item[1])]);
+    }
+  });
+  return out;
+}
+
+function deserializeFirestoreMaterial(docData) {
+  return {
+    stockCode: docData.stockCode,
+    name: docData.name || docData.stockCode,
+    classification: docData.classification,
+    adi: docData.adi !== undefined ? docData.adi : null,
+    cv2: docData.cv2 !== undefined ? docData.cv2 : null,
+    range: docData.range || "",
+    alphaC: docData.alphaC,
+    alphaS: docData.alphaS,
+    betaT: docData.betaT,
+    bestMethod: docData.bestMethod,
+    bestMse: docData.bestMse || null,
+    bestMape: docData.bestMape || null,
+    selectionBasis: docData.selectionBasis || "mase_in_sample",
+    source: docData.source || "backend_python",
+    formulaVersion: docData.formulaVersion || "excel-verified-v1",
+    gridStep: docData.gridStep || 0.0001,
+    horizonMonths: docData.horizonMonths,
+    nextForecast: docData.nextForecast,
+    interval: docData.interval,
+    nextMonth: docData.nextMonth || null,
+    nextQty: docData.nextQty,
+    metrics: docData.metrics,
+    evaluation: docData.evaluation || null,
+    data: decodeFlatPairs(docData.data),
+    predictions: decodeFlatPairs(docData.predictions),
+    backend: {
+      gridSearch: docData.gridSearch || null,
+      gridSearchTrain: docData.gridSearchTrain || null
+    },
+    custom: true
+  };
+}
+
+async function loadDatasetFromFirestore(uid, datasetId, notifyCrossDevice) {
+  var seq = ++activeLoadSeq;
+  if (!datasetId || datasetId === "baseline") {
+    state.activeDatasetId = "baseline";
+    state.activeDatasetMeta = null;
+    state.localPreviewOnly = false;
+    state.materials = state.builtin;
+    if (!state.materials[state.selected]) state.selected = EXPECTED_CODES[0];
+    state.workspaceLoading = false;
+    state.workspaceError = null;
+    render();
+    if (notifyCrossDevice) showToast("Workspace disinkronkan: kembali ke Baseline Awal (8 Material Excel).");
+    return;
+  }
+
+  state.workspaceLoading = true;
+  state.workspaceError = null;
+  render();
+
+  try {
+    var db = window.firebaseDb;
+    var dsRef = db.collection("users").doc(uid).collection("datasets").doc(datasetId);
+    var dsSnap = await dsRef.get();
+    if (seq !== activeLoadSeq) return; // Superseded by newer snapshot
+
+    if (!dsSnap.exists) {
+      state.activeDatasetId = "baseline";
+      state.activeDatasetMeta = null;
+      state.materials = state.builtin;
+      state.selected = EXPECTED_CODES[0];
+      state.workspaceLoading = false;
+      render();
+      return;
+    }
+
+    var meta = dsSnap.data() || {};
+    meta.datasetId = meta.datasetId || dsSnap.id;
+
+    if (meta.status !== "completed") {
+      // Jangan tampilkan dataset yang gagal/belum selesai sebagai dataset aktif
+      state.workspaceLoading = false;
+      render();
+      return;
+    }
+
+    var matSnap = await dsRef.collection("materials").get();
+    if (seq !== activeLoadSeq) return;
+
+    var loaded = {};
+    matSnap.forEach(function (doc) {
+      var d = doc.data();
+      if (d && d.stockCode) loaded[d.stockCode] = deserializeFirestoreMaterial(d);
+    });
+
+    var loadedKeys = Object.keys(loaded).sort();
+    if (!loadedKeys.length) {
+      throw new Error("Dataset " + meta.name + " tidak memiliki dokumen hasil material di Firestore.");
+    }
+
+    state.activeDatasetId = datasetId;
+    state.activeDatasetMeta = meta;
+    state.localPreviewOnly = false;
+    state.materials = loaded;
+    if (!state.materials[state.selected]) state.selected = loadedKeys[0];
+    state.workspaceLoading = false;
+    state.workspaceError = null;
+    render();
+
+    if (notifyCrossDevice) {
+      showToast("Sinkronisasi lintas perangkat: dataset aktif diperbarui ke \"" + meta.name + "\" (" + loadedKeys.length + " material).");
+    }
+  } catch (err) {
+    if (seq !== activeLoadSeq) return;
+    console.error("Gagal memuat dataset dari Firestore:", err);
+    state.workspaceLoading = false;
+    state.workspaceError = "Gagal memuat dataset dari Firebase Firestore: " + (err && err.message ? err.message : String(err));
+    render();
+  }
+}
+
+function startWorkspaceSync(user) {
+  stopWorkspaceSync();
+  state.user = user;
+  state.workspaceLoading = true;
+  state.workspaceError = null;
+  render();
+
+  var db = window.firebaseDb;
+  if (!db) {
+    state.workspaceLoading = false;
+    state.workspaceError = "Firebase Firestore tidak tersedia. Periksa koneksi internet Anda.";
+    render();
+    return;
+  }
+
+  var uid = user.uid;
+  var initialUserSnapDone = false;
+  var lastSeenActiveId = null;
+
+  // Pastikan dokumen root user ada (tanpa menimpa activeDatasetId jika sudah ada)
+  db.collection("users").doc(uid).set({
+    profile: {
+      email: user.email || "",
+      lastSeenAt: window.firebase.firestore.FieldValue.serverTimestamp()
+    }
+  }, { merge: true }).catch(function (e) {
+    console.warn("Gagal memperbarui profil user:", e);
+  });
+
+  // Listener #1: Real-time activeDatasetId (sinkronisasi lintas perangkat!)
+  var unsubUser = db.collection("users").doc(uid).onSnapshot(function (snap) {
+    state.syncLive = true;
+    var data = snap.exists ? (snap.data() || {}) : {};
+    var remoteActiveId = data.activeDatasetId || "baseline";
+
+    if (!initialUserSnapDone) {
+      initialUserSnapDone = true;
+      lastSeenActiveId = remoteActiveId;
+      loadDatasetFromFirestore(uid, remoteActiveId, false);
+      return;
+    }
+
+    if (remoteActiveId !== lastSeenActiveId) {
+      lastSeenActiveId = remoteActiveId;
+      var isSelf = remoteActiveId === state.lastSelfActivatedDatasetId;
+      if (isSelf) state.lastSelfActivatedDatasetId = null;
+      if (remoteActiveId === state.activeDatasetId && !state.localPreviewOnly) {
+        return;
+      }
+      loadDatasetFromFirestore(uid, remoteActiveId, !isSelf);
+    }
+  }, function (err) {
+    console.error("Firestore user listener error:", err);
+    state.syncLive = false;
+    state.workspaceLoading = false;
+    state.workspaceError = "Koneksi real-time Firestore terputus (" + (err.code || err.message) + "). Pastikan Firestore Security Rules sudah dipasang.";
+    render();
+  });
+
+  // Listener #2: Real-time riwayat dataset milik UID
+  var unsubDatasets = db.collection("users").doc(uid).collection("datasets")
+    .orderBy("uploadedAt", "desc")
+    .onSnapshot(function (querySnap) {
+      var list = [];
+      querySnap.forEach(function (doc) {
+        var d = doc.data() || {};
+        d.datasetId = d.datasetId || doc.id;
+        list.push(d);
+      });
+      state.datasets = list;
+      // Update metadata jika dataset aktif baru saja berubah
+      if (state.activeDatasetId && state.activeDatasetId !== "baseline") {
+        var match = list.find(function (x) { return x.datasetId === state.activeDatasetId; });
+        if (match) state.activeDatasetMeta = match;
+      }
+      if (!state.workspaceLoading) render();
+    }, function (err) {
+      console.warn("Firestore datasets listener error:", err);
+    });
+
+  syncUnsubs.push(unsubUser, unsubDatasets);
+}
+
+/* ============================================================
+   DATASET ACTIONS (ACTIVATE, SWITCH BASELINE, DOWNLOAD, DELETE)
+   ============================================================ */
+async function activateDataset(datasetId) {
+  if (!state.user) return;
+  state.lastSelfActivatedDatasetId = datasetId;
+  try {
+    // Gunakan backend API jika online agar atomic transaction & verifikasi server berjalan,
+    // fallback langsung ke Firestore dengan Security Rules berbasis UID jika backend sedang sleep.
+    if (bb.online && bb.base) {
+      try {
+        await bbFetch("/datasets/" + encodeURIComponent(datasetId) + "/activate", { method: "POST" });
+        showToast(datasetId === "baseline"
+          ? "Beralih ke Baseline Awal (8 Material Uji Excel)."
+          : "Dataset diaktifkan dan disinkronkan ke seluruh perangkat.");
+        return;
+      } catch (apiErr) {
+        console.warn("Fallback aktivasi via Firestore client:", apiErr);
+      }
+    }
+
+    var db = window.firebaseDb;
+    var userRef = db.collection("users").doc(state.user.uid);
+    await userRef.set({
+      activeDatasetId: datasetId,
+      activeDatasetUpdatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    showToast(datasetId === "baseline"
+      ? "Beralih ke Baseline Awal (8 Material Uji Excel)."
+      : "Dataset diaktifkan dan disinkronkan ke seluruh perangkat.");
+  } catch (err) {
+    showToast("Gagal mengaktifkan dataset: " + (err && err.message ? err.message : String(err)));
+  }
+}
+
+async function downloadOriginalDatasetFile(ds) {
+  if (!ds || !state.user) return;
+  try {
+    // Prioritas 1: signed URL dari backend
+    if (bb.online && bb.base) {
+      try {
+        var res = await bbFetch("/datasets/" + encodeURIComponent(ds.datasetId) + "/download-url");
+        if (res && res.downloadUrl) {
+          window.open(res.downloadUrl, "_blank", "noopener");
+          return;
+        }
+      } catch (e) {
+        console.warn("Signed URL backend tidak tersedia, mencoba Firebase Storage SDK:", e);
+      }
+    }
+    // Prioritas 2: Firebase Storage client SDK langsung (terlindungi storage.rules per UID)
+    if (ds.storagePath && window.firebaseStorage) {
+      var url = await window.firebaseStorage.ref(ds.storagePath).getDownloadURL();
+      window.open(url, "_blank", "noopener");
+      return;
+    }
+    showToast("File asli tidak tersedia di Firebase Storage untuk dataset ini.");
+  } catch (err) {
+    showToast("Gagal mengunduh file asli: " + (err && err.message ? err.message : String(err)));
+  }
+}
+
+async function deleteDatasetWithConfirm(ds) {
+  if (!ds || ds.datasetId === "baseline" || !state.user) return;
+  var ok = window.confirm(
+    "Hapus dataset \"" + (ds.name || ds.datasetId) + "\" (" + (ds.originalFilename || "") + ")?\n\n" +
+    "Metadata, seluruh hasil forecasting material, dan file asli di Firebase Storage akan dihapus permanen. " +
+    "Baseline 8 material Excel tidak akan terpengaruh."
+  );
+  if (!ok) return;
+
+  try {
+    if (bb.online && bb.base) {
+      await bbFetch("/datasets/" + encodeURIComponent(ds.datasetId), { method: "DELETE" });
+      if (state.detailDatasetId === ds.datasetId) state.detailDatasetId = null;
+      showToast("Dataset \"" + (ds.name || ds.datasetId) + "\" berhasil dihapus.");
+      return;
+    }
+
+    // Fallback penghapusan penuh via Firestore + Storage client SDK (UID-isolated)
+    var db = window.firebaseDb;
+    var uid = state.user.uid;
+    var dsRef = db.collection("users").doc(uid).collection("datasets").doc(ds.datasetId);
+
+    if (ds.storagePath && window.firebaseStorage) {
+      try { await window.firebaseStorage.ref(ds.storagePath).delete(); } catch (e) {}
+    }
+
+    var matSnap = await dsRef.collection("materials").get();
+    var docs = matSnap.docs;
+    for (var i = 0; i < docs.length; i += 350) {
+      var batch = db.batch();
+      docs.slice(i, i + 350).forEach(function (d) { batch.delete(d.ref); });
+      await batch.commit();
+    }
+    await dsRef.delete();
+
+    if (state.activeDatasetId === ds.datasetId) {
+      var nextCompleted = state.datasets.find(function (x) { return x.datasetId !== ds.datasetId && x.status === "completed"; });
+      await activateDataset(nextCompleted ? nextCompleted.datasetId : "baseline");
+    }
+    if (state.detailDatasetId === ds.datasetId) state.detailDatasetId = null;
+    showToast("Dataset \"" + (ds.name || ds.datasetId) + "\" berhasil dihapus.");
+  } catch (err) {
+    showToast("Gagal menghapus dataset: " + (err && err.message ? err.message : String(err)));
+  }
+}
+
+/* ============================================================
+   BACKEND BRIDGE — FASTAPI + ASYNC JOBS + FIREBASE TOKEN
+   ============================================================ */
+var bb = {
+  base: "",
+  online: null,
+  info: null,
+  uploading: false,
+  busy: false,
+  pendingUpload: null,  // { upload_id, dataset_id, dataset_name, storage_path, report }
+  status: "",
+  color: "",
+  prog: null,
+  report: null,
+  verify: false,        // Opsional; matikan default agar 100+ material langsung instan
+  checked: false,
+  pollTimer: null
+};
+
+function defaultApiBase() {
+  var cfg = window.APP_CONFIG || {};
+  var isLocal = cfg.IS_LOCAL !== undefined
+    ? cfg.IS_LOCAL
+    : (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:");
+  return cfg.API_BASE_URL || (isLocal ? "http://localhost:8000" : "");
+}
+
+(function initApiBase() {
+  var savedOverride = "";
+  try { savedOverride = localStorage.getItem(UI_PREF_API_KEY) || ""; } catch (e) {}
+  bb.base = savedOverride || defaultApiBase();
+})();
+
+async function getFreshIdToken(forceRefresh) {
+  var u = window.firebaseCurrentUser;
+  if (!u || typeof u.getIdToken !== "function") return null;
+  return await u.getIdToken(!!forceRefresh);
+}
+
+async function bbFetch(path, opts, isRetry) {
+  if (!bb.base) {
+    throw new Error("URL Backend API production belum dikonfigurasi. Atur URL backend (HTTPS) di halaman Data & Upload atau melalui config.js.");
+  }
+  opts = Object.assign({}, opts || {});
+  opts.headers = Object.assign({}, opts.headers || {});
+
+  var token = await getFreshIdToken(!!isRetry);
+  if (token) opts.headers["Authorization"] = "Bearer " + token;
+
+  var url = bb.base.replace(/\/+$/, "") + path;
+  var res;
+  try {
+    res = await fetch(url, opts);
+  } catch (e) {
+    throw new Error("Tidak dapat terhubung ke backend (" + bb.base + "). Pastikan server Python FastAPI aktif dan CORS mengizinkan domain ini.");
+  }
+
+  // Jika token kedaluwarsa (401), refresh token Firebase sekali secara otomatis lalu ulangi request
+  if (res.status === 401 && !isRetry && window.firebaseCurrentUser) {
+    return bbFetch(path, opts, true);
+  }
+
+  var body = null;
+  try { body = await res.json(); } catch (e) {}
+  if (!res.ok) {
+    throw new Error((body && (body.detail || body.message)) || ("HTTP " + res.status));
+  }
+  return body;
+}
+
+async function bbCheck() {
+  if (!bb.base) {
+    bb.online = false;
+    bb.checked = true;
+    bb.status = "URL Backend API belum diisi. Masukkan URL HTTPS backend Python (mis. Render) lalu klik Cek Koneksi.";
+    bb.color = "var(--medium)";
+    bbPaint();
+    return;
+  }
+  bb.status = "Memeriksa koneksi backend Python (jika server Render baru aktif dari mode sleep, proses pertama dapat memakan 30–50 detik)...";
+  bb.color = "";
+  bbPaint();
+  try {
+    var r = await bbFetch("/");
+    bb.online = !!(r && r.status === "ok");
+    bb.info = r;
+    if (bb.online) {
+      var fbNote = r.firestore_ready
+        ? (r.storage_ready ? "Firestore & Storage aktif" : "Firestore aktif (Storage belum dikonfigurasi)")
+        : "PERINGATAN: Firestore belum dikonfigurasi di backend";
+      bb.status = "Backend terhubung (v" + r.version + " · formula " + (r.formula_version || "excel-verified-v1") + " · " + fbNote + ").";
+      bb.color = r.firestore_ready ? "var(--smooth)" : "var(--medium)";
+    } else {
+      bb.status = "Respons backend tidak dikenali.";
+      bb.color = "var(--lumpy)";
+    }
+  } catch (e) {
+    bb.online = false;
+    bb.status = e.message;
+    bb.color = "var(--lumpy)";
+  }
+  bb.checked = true;
+  bbPaint();
+}
+
+// Tahap 1: Upload & Validasi File Excel/CSV (menampilkan ringkasan validasi SEBELUM forecasting)
+async function bbUploadAndValidate(file) {
+  if (bb.busy || bb.uploading) {
+    showToast("Proses sebelumnya masih berjalan.");
+    return;
+  }
+  var extOk = /\.(xlsx|xlsm|csv)$/i.test(file.name);
+  if (!extOk) {
+    bb.color = "var(--lumpy)";
+    bb.status = "Format file tidak didukung. Unggah file .xlsx, .xlsm, atau .csv.";
+    bbPaint();
+    return;
+  }
+
+  bb.uploading = true;
+  bb.pendingUpload = null;
+  bb.report = null;
+  bb.prog = null;
+  bb.color = "";
+  bb.status = "Mengunggah & memvalidasi struktur file " + file.name + " di backend Python...";
+  bbPaint();
+
+  try {
+    var fd = new FormData();
+    fd.append("file", file, file.name);
+    var up = await bbFetch("/upload", { method: "POST", body: fd });
+    bb.pendingUpload = up;
+    bb.report = up.report;
+    bb.online = true;
+    bb.color = "var(--accent)";
+    bb.status = "Validasi selesai: terdeteksi " + up.report.n_materials + " material valid (" + up.report.period_min + " s.d. " + up.report.period_max + "). Periksa ringkasan di bawah lalu klik 'Jalankan Forecasting & Simpan ke Firebase'.";
+    render();
+  } catch (e) {
+    bb.color = "var(--lumpy)";
+    bb.status = "Upload / validasi gagal: " + e.message;
+    bbPaint();
+    showToast("Validasi file gagal.");
+  } finally {
+    bb.uploading = false;
+  }
+}
+
+// Tahap 2: Jalankan Forecasting Asinkron & Simpan Permanen ke Firebase
+async function bbStartForecasting() {
+  if (!bb.pendingUpload || bb.busy) return;
+  var nameInput = document.getElementById("bb-dataset-name");
+  var customName = nameInput ? nameInput.value.trim() : bb.pendingUpload.dataset_name;
+  var uidAtStart = state.user ? state.user.uid : null;
+
+  bb.busy = true;
+  bb.color = "";
+  state.lastSelfActivatedDatasetId = bb.pendingUpload.dataset_id;
+  bb.status = "Mengirim job forecasting ke backend Python...";
+  bb.prog = { done: 0, total: bb.pendingUpload.report.n_materials || 0, percent: 0, stage: "Mengirim antrean...", status: "queued", current: null };
+  bbPaint();
+
+  try {
+    var job = await bbFetch("/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        upload_id: bb.pendingUpload.upload_id,
+        dataset_name: customName || bb.pendingUpload.dataset_name,
+        activate_on_complete: true
+      })
+    });
+
+    var t0 = Date.now();
+    for (;;) {
+      // Hentikan polling jika pengguna logout atau ganti akun di tengah jalan
+      if (!state.user || state.user.uid !== uidAtStart) {
+        bb.busy = false;
+        return;
+      }
+
+      var st = await bbFetch("/jobs/" + encodeURIComponent(job.job_id));
+      bb.prog = {
+        done: st.done || 0,
+        total: st.total || 0,
+        percent: st.percent || 0,
+        stage: st.stage || "Memproses...",
+        status: st.status,
+        current: st.current_material || null
+      };
+      bb.status = st.stage || "Memproses...";
+      bbPaint();
+
+      if (st.status === "done") {
+        if (st.saved_to_firebase) {
+          bb.pendingUpload = null;
+          bb.color = "var(--smooth)";
+          bb.status = "Selesai! " + st.total + " material berhasil di-forecast dan tersimpan permanen ke Firebase. Dataset aktif otomatis diperbarui di seluruh perangkat.";
+          showToast("Forecasting selesai & tersimpan permanen ke Firebase (" + st.total + " material).");
+          // Muat dataset jika belum otomatis dimuat oleh onSnapshot
+          if (state.activeDatasetId !== st.dataset_id || state.localPreviewOnly) {
+            await loadDatasetFromFirestore(uidAtStart, st.dataset_id, false);
+          } else {
+            render();
+          }
+        } else {
+          // Mode lokal tanpa Firestore di backend: muat langsung dari /materials dengan peringatan eksplisit
+          var all = await bbFetch("/materials?full=true");
+          var fresh = {};
+          (all.materials || []).forEach(function (it) {
+            fresh[it.stock_code] = it.result;
+            fresh[it.stock_code].backend = { gridSearch: it.grid_search, gridSearchTrain: it.grid_search_train };
+          });
+          state.materials = fresh;
+          state.selected = Object.keys(fresh)[0] || state.selected;
+          state.activeDatasetId = st.dataset_id;
+          state.activeDatasetMeta = { datasetId: st.dataset_id, name: customName || "Dataset Lokal", status: "completed", materialCount: Object.keys(fresh).length };
+          state.localPreviewOnly = true;
+          bb.pendingUpload = null;
+          bb.color = "var(--medium)";
+          bb.status = "Forecasting selesai (" + st.total + " material), NAMUN backend belum terhubung ke Firebase Admin SDK sehingga hasil BELUM tersimpan permanen ke Firestore.";
+          showToast("Peringatan: hasil belum tersimpan ke Firebase (Firestore backend belum aktif).");
+          render();
+        }
+        break;
+      }
+
+      if (st.status === "error") {
+        throw new Error(st.error || "Terjadi kegagalan saat menjalankan forecasting di backend.");
+      }
+
+      if (Date.now() - t0 > 30 * 60 * 1000) {
+        throw new Error("Proses melebihi batas waktu 30 menit.");
+      }
+
+      await new Promise(function (resolve) {
+        bb.pollTimer = setTimeout(resolve, 450);
+      });
+    }
+  } catch (err) {
+    bb.color = "var(--lumpy)";
+    bb.status = "Gagal: " + err.message + " Dataset aktif sebelumnya tetap dipertahankan.";
+    if (bb.prog) bb.prog.status = "error";
+    bbPaint();
+    showToast("Proses forecasting gagal. Dataset aktif sebelumnya aman.");
+  } finally {
+    bb.busy = false;
+    bb.pollTimer = null;
+  }
+}
+
+function bbPaint() {
+  var dot = document.getElementById("bb-dot");
+  if (dot) {
+    dot.style.background = bb.online === true ? "var(--smooth)" : bb.online === false ? "var(--lumpy)" : "var(--muted)";
+    dot.title = bb.online === true ? "Backend terhubung" : bb.online === false ? "Backend tidak terhubung" : "Belum dicek";
+  }
+  var st = document.getElementById("bb-status");
+  if (st) { st.textContent = bb.status; st.style.color = bb.color || "var(--muted)"; }
+
+  var pr = document.getElementById("bb-progress");
+  if (pr) {
+    if (bb.prog) {
+      pr.style.display = "block";
+      var curTxt = bb.prog.current ? " — Sedang diproses: " + esc(bb.prog.current.code) + " (" + esc(bb.prog.current.name) + ")" : "";
+      var fillCls = bb.prog.status === "done" ? "done" : bb.prog.status === "saving" ? "saving" : bb.prog.status === "error" ? "err" : "";
+      pr.innerHTML =
+        '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);gap:10px;flex-wrap:wrap;">' +
+          '<span><strong>' + esc(bb.prog.stage) + '</strong>' + curTxt + '</span>' +
+          '<span class="mono">' + bb.prog.done + ' / ' + bb.prog.total + ' material (' + bb.prog.percent + '%)</span>' +
+        '</div>' +
+        '<div class="progress-track"><div class="progress-fill ' + fillCls + '" style="width:' + bb.prog.percent + '%;"></div></div>';
+    } else {
+      pr.style.display = "none";
+    }
+  }
+
+  var rep = document.getElementById("bb-report");
+  if (rep) {
+    var r = bb.report;
+    if (!r) {
+      rep.innerHTML = "";
+    } else {
+      var confirmBox = bb.pendingUpload
+        ? '<div style="margin-top:14px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">' +
+            '<div style="flex:1;min-width:220px;">' +
+              '<label class="field-label" for="bb-dataset-name">Nama Dataset (disimpan di History akun Anda)</label>' +
+              '<input class="field" id="bb-dataset-name" style="width:100%;" value="' + esc(bb.pendingUpload.dataset_name || "") + '" maxlength="120">' +
+            '</div>' +
+            '<button class="btn" id="bb-run-btn"' + (bb.busy ? ' disabled' : '') + '>Jalankan Forecasting &amp; Simpan ke Firebase</button>' +
+            '<button class="btn-ghost" id="bb-cancel-btn"' + (bb.busy ? ' disabled' : '') + '>Batal</button>' +
+          '</div>'
+        : "";
+
+      rep.innerHTML =
+        '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">' +
+          '<div style="font-size:13.5px;font-weight:700;margin-bottom:8px;">Ringkasan Validasi File</div>' +
+          '<table style="width:100%;font-size:12.5px;border-collapse:collapse;">' +
+            '<tr style="text-align:left;color:var(--muted);"><th style="padding:5px 0;">Pemeriksaan</th><th>Hasil</th></tr>' +
+            [
+              ["File & Sumber", esc(r.filename) + " (" + esc(r.source) + ")"],
+              ["Total baris dibaca / valid", r.rows_total + " / " + r.rows_valid],
+              ["Jumlah material terdeteksi otomatis", "<strong>" + r.n_materials + " material</strong>"],
+              ["Rentang periode data", esc(r.period_min) + " s.d. " + esc(r.period_max)],
+              ["Aturan evaluasi (>60 bln / &le;60 bln)", (r.eval_traintest_count || 0) + " Train/Test 50:50 &middot; " + (r.eval_lastdemand_count || 0) + " Demand Aktual Terakhir"],
+              ["Transaksi duplikat dijumlahkan", r.duplicates_summed],
+              ["Bulan kosong diisi 0", r.months_filled_zero],
+              ["Baris ditolak (kode/bulan / qty)", r.rejected_bad_code_or_month + " / " + r.rejected_bad_qty],
+              ["Material dilewati (&lt;6 bln / semua 0)", r.skipped_materials && r.skipped_materials.length ? esc(r.skipped_materials.slice(0, 12).join(", ")) : "0"]
+            ].map(function (x) {
+              return '<tr style="border-top:1px solid var(--border);"><td style="padding:5px 0;">' + x[0] + '</td><td class="mono">' + x[1] + '</td></tr>';
+            }).join("") +
+          '</table>' +
+          (r.warnings || []).map(function (w) {
+            return '<div class="callout warn" style="margin-top:8px;"><span>&#9888;</span><span>' + esc(w) + '</span></div>';
+          }).join("") +
+          confirmBox +
+        '</div>';
+
+      var runBtn = document.getElementById("bb-run-btn");
+      if (runBtn) runBtn.addEventListener("click", bbStartForecasting);
+      var cancelBtn = document.getElementById("bb-cancel-btn");
+      if (cancelBtn) cancelBtn.addEventListener("click", function () {
+        bb.pendingUpload = null; bb.report = null; bb.status = "Upload dibatalkan."; bb.color = "var(--muted)"; bbPaint();
+      });
+    }
+  }
+}
+
+/* ============================================================
+   UI HELPERS
+   ============================================================ */
+function codes() { return Object.keys(state.materials); }
+function mat() { return state.materials[state.selected] || state.materials[codes()[0]]; }
+function isBaselineActive() { return state.activeDatasetId === "baseline" && !state.localPreviewOnly; }
+
+function activeDatasetLabel() {
+  if (state.localPreviewOnly) return "Preview Lokal (Sementara)";
+  if (state.activeDatasetId === "baseline") return "Baseline Awal (8 Material Excel)";
+  return (state.activeDatasetMeta && state.activeDatasetMeta.name) || state.activeDatasetId;
+}
+
+function showToast(msg) {
+  var t = document.getElementById("toast");
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(function () { t.classList.remove("show"); }, 3400);
+}
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+function tip(t) { return '<span class="tip" tabindex="0" data-tip="' + esc(t) + '">i</span>'; }
+function sec(title, desc, body, tipTxt) {
+  return '<div class="section"><div class="section-head"><div><div class="section-title">' + title + (tipTxt ? tip(tipTxt) : '') + '</div>' + (desc ? '<div class="section-desc">' + desc + '</div>' : '') + '</div></div>' + body + '</div>';
+}
+function tbl(h, rows) {
+  return '<div class="card" style="padding:0;overflow-x:auto;"><table class="data-table"><thead><tr>' + h.map(function (x) { return '<th>' + x + '</th>'; }).join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
+}
+function tr(cells) { return '<tr>' + cells.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>'; }
+function emptyBox(title, text) { return '<div class="card"><div class="empty-state"><div class="empty-state-title">' + title + '</div>' + text + '</div></div>'; }
+function kpiGrid(cards) { return '<div class="grid section" style="grid-template-columns:repeat(auto-fit,minmax(185px,1fr));">' + cards.join('') + '</div>'; }
+function kpiCard(label, value, unit, foot) {
+  return '<div class="card"><div class="kpi-label">' + label + '</div><div><span class="kpi-value">' + value + '</span>' + (unit ? '<span class="kpi-unit">' + unit + '</span>' : '') + '</div>' + (foot ? '<div class="kpi-foot">' + foot + '</div>' : '') + '</div>';
+}
+function metricRow(label, value, bold) {
+  return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px;"><span style="color:var(--faint);">' + label + '</span><span class="mono" style="font-weight:' + (bold ? '700' : '500') + ';">' + value + '</span></div>';
+}
+function pctFmt(v) { return v === null || v === undefined || isNaN(v) ? "n/a" : fmtNum(v, 2) + "%"; }
+function spanText(N) { var y = Math.floor(N / 12), mo = N % 12; return y + " tahun" + (mo ? " " + mo + " bulan" : "") + " (" + N + " bulan)"; }
+
+var T_STAT = "Statistical Forecast: hasil proyeksi berdasarkan pola demand historis menggunakan metode intermittent-demand forecasting (Croston/SBA/TSB) terverifikasi Excel.";
+var T_EXCEL = "Baseline awal diambil dari file Excel 8 material uji. Dataset baru dihitung di backend Python menggunakan rumus Excel terverifikasi yang sama persis dan disimpan permanen di Firebase.";
+
+function materialSelector() {
+  var allCodes = codes();
+  return (
+    '<select class="filter-select" data-action="change-material">' +
+      allCodes.map(function (c) {
+        return '<option value="' + esc(c) + '"' + (c === state.selected ? ' selected' : '') + '>' + esc(c) + ' — ' + esc(state.materials[c].name) + '</option>';
+      }).join('') +
+    '</select>'
+  );
+}
+
+function statTableFor(code) {
+  var m = state.materials[code], p = (m && m.predictions) || [];
+  if (!p.length) return emptyBox("Tidak ada kejadian demand diprediksi pada horizon ini", "");
+  return tbl(["Month", "Forecast Qty", "Method"], p.map(function (x) {
+    return tr([fmtMonth(x[0]), '<span class="mono" style="font-weight:600;">' + fmtNum(x[1], 4) + '</span>', esc(m.bestMethod)]);
+  }));
+}
+
+function allForecastTable() {
+  var q = state.searchQuery.trim().toLowerCase();
+  var rows = [];
+  codes().forEach(function (c) {
+    var m = state.materials[c];
+    if (q && c.toLowerCase().indexOf(q) < 0 && String(m.name || "").toLowerCase().indexOf(q) < 0) return;
+    (m.predictions || []).forEach(function (p) {
+      rows.push(tr([
+        '<span class="mono">' + esc(c) + '</span>',
+        esc(m.name),
+        fmtMonth(p[0]),
+        '<span class="mono" style="font-weight:600;">' + fmtNum(p[1], 4) + '</span>',
+        esc(m.bestMethod),
+        fmtNum(m.metrics[m.bestMethod].mase, 4),
+        fmtNum(m.adi, 2),
+        fmtNum(m.cv2, 3),
+        esc(m.classification)
+      ]));
+    });
+  });
+  if (!rows.length) return emptyBox("Tidak ada kejadian forecast yang cocok", "");
+  var truncated = rows.length > 500;
+  var shown = truncated ? rows.slice(0, 500) : rows;
+  return (truncated ? '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Menampilkan 500 dari ' + rows.length + ' kejadian forecast. Gunakan kotak pencarian di atas untuk menyaring material.</div>' : '') +
+    '<div style="max-height:440px;overflow:auto;border-radius:10px;">' +
+      tbl(["Stock Code", "Material", "Forecast Month", "Forecast Qty", "Best Method", "MASE", "ADI", "CV&sup2;", "Classification"], shown) +
+    '</div>';
+}
+
+/* ============================================================
+   RENDER: NAV & ACTIVE WORKSPACE HEADER
+   ============================================================ */
+function renderNav() {
+  var histCount = state.datasets.length;
+  var pages = [
+    { id: "overview", label: "Overview", badge: codes().length },
+    { id: "material", label: "Material Analysis" },
+    { id: "forecast", label: "Statistical Forecast" },
+    { id: "data", label: "Upload &amp; Proses" },
+    { id: "datasets", label: "Datasets &amp; History", badge: histCount },
+    { id: "audit", label: "Validation / Audit" }
+  ];
+  var badgeHtml = isBaselineActive()
+    ? '<span class="badge badge-baseline" style="font-size:10.5px;padding:2px 7px;">Baseline Awal</span>'
+    : state.localPreviewOnly
+      ? '<span class="badge badge-warn" style="font-size:10.5px;padding:2px 7px;">Preview Lokal</span>'
+      : '<span class="badge badge-active" style="font-size:10.5px;padding:2px 7px;">Dataset Aktif</span>';
+
+  return (
+    '<div class="nav">' +
+      '<div class="nav-brand">' +
+        '<div class="nav-brand-title">Forecast Studio</div>' +
+        '<div class="nav-brand-sub">Dashboard Forecasting Material</div>' +
+      '</div>' +
+      '<div class="nav-workspace-pill">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px;">' +
+          badgeHtml +
+          '<span style="font-size:10.5px;color:' + (state.syncLive ? 'var(--smooth)' : 'var(--faint)') + ';font-weight:600;">&#9679; ' + (state.syncLive ? 'Sinkron' : 'Offline') + '</span>' +
+        '</div>' +
+        '<div style="font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + esc(activeDatasetLabel()) + '">' + esc(activeDatasetLabel()) + '</div>' +
+        '<div style="color:var(--muted);margin-top:2px;">' + codes().length + ' material &middot; ' + histCount + ' history</div>' +
+      '</div>' +
+      '<div class="nav-pages">' +
+        pages.map(function (p) {
+          return '<button class="nav-item' + (state.page === p.id ? ' active' : '') + '" data-action="goto" data-page="' + p.id + '">' +
+            '<span>' + p.label + '</span>' +
+            (p.badge !== undefined ? '<span class="nav-count mono">' + p.badge + '</span>' : '') +
+          '</button>';
+        }).join('') +
+      '</div>' +
+      '<div class="nav-footer">' +
+        '<div style="color:var(--text);font-weight:600;word-break:break-all;margin-bottom:4px;">' + esc(state.user ? state.user.email : "-") + '</div>' +
+        '<div>Workspace pribadi berbasis Firebase UID. Data tersinkron otomatis lintas perangkat.</div>' +
+        '<div style="margin-top:10px;"><button data-action="logout" style="background:none;border:none;color:var(--accent);font-size:12px;font-weight:600;padding:0;">Keluar Akun</button></div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+/* ============================================================
+   RENDER: OVERVIEW (DINAMIS UNTUK 8, 20, 50, 100+ MATERIAL)
+   ============================================================ */
+function renderOverview() {
+  var all = codes().map(function (c) { return Object.assign({ code: c }, state.materials[c]); });
+  var cnt = function (k) { return all.filter(function (m) { return m.classification === k; }).length; };
+  var withF = all.filter(function (m) { return (m.predictions || []).length > 0; }).length;
+  var nTT = all.filter(function (m) { return m.data.length > EVAL_LIMIT_MONTHS; }).length;
+  var classes = ["Semua", "Lumpy", "Intermittent", "Erratic", "Smooth"];
+  var q = state.searchQuery.trim().toLowerCase();
+
+  var filtered = all.filter(function (m) {
+    if (state.filterClass !== "Semua" && m.classification !== state.filterClass) return false;
+    if (q && m.code.toLowerCase().indexOf(q) < 0 && String(m.name || "").toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+
+  var shown = state.pageLimit > 0 ? filtered.slice(0, state.pageLimit) : filtered;
+
+  var dist = ["Lumpy", "Intermittent", "Erratic", "Smooth"].map(function (k) {
+    var c = cnt(k), cv = classColorVar(k);
+    return '<div style="display:flex;align-items:center;gap:10px;margin:7px 0;font-size:12.5px;"><span style="width:92px;color:var(--muted);">' + k + '</span><div style="flex:1;background:var(--bg);border-radius:4px;height:16px;"><div style="width:' + (all.length ? c / all.length * 100 : 0) + '%;height:16px;border-radius:4px;background:var(--' + cv + ');"></div></div><span class="mono" style="width:36px;text-align:right;font-weight:600;">' + c + '</span></div>';
+  }).join('');
+
+  var byYear = {};
+  all.forEach(function (m) { (m.predictions || []).forEach(function (p) { var y = p[0].slice(0, 4); byYear[y] = (byYear[y] || 0) + 1; }); });
+  var ys = Object.keys(byYear).sort();
+  var maxY = Math.max.apply(null, ys.map(function (y) { return byYear[y]; }).concat([1]));
+  var fcTl = ys.length ? '<div style="display:flex;align-items:flex-end;gap:8px;height:110px;overflow-x:auto;">' + ys.map(function (y) {
+    return '<div style="flex:1;min-width:34px;text-align:center;font-size:11px;color:var(--faint);"><div class="mono" style="color:var(--muted);">' + byYear[y] + '</div><div title="' + y + ': ' + byYear[y] + ' kejadian" style="height:' + Math.max(3, byYear[y] / maxY * 70) + 'px;background:var(--accent);border-radius:3px 3px 0 0;margin:2px 0;"></div>' + y + '</div>';
+  }).join('') + '</div>' : '<div class="empty-state">Tidak ada kejadian forecast.</div>';
+
+  var methodDist = ["Croston", "SBA", "TSB"].map(function (k) {
+    var c = all.filter(function (m) { return m.bestMethod === k; }).length;
+    return '<div style="display:flex;align-items:center;gap:10px;margin:7px 0;font-size:12.5px;"><span style="width:92px;color:var(--muted);">' + k + '</span><div style="flex:1;background:var(--bg);border-radius:4px;height:16px;"><div style="width:' + (all.length ? c / all.length * 100 : 0) + '%;height:16px;border-radius:4px;background:var(--accent);"></div></div><span class="mono" style="width:36px;text-align:right;">' + c + '</span></div>';
+  }).join('');
+
+  return (
+    '<div class="topbar">' +
+      '<div><div class="topbar-title">Overview</div><div class="topbar-sub">Dataset aktif: <strong>' + esc(activeDatasetLabel()) + '</strong> (' + all.length + ' material)</div></div>' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+        '<button class="btn-ghost btn-sm" data-action="goto" data-page="datasets">Ganti Dataset / History</button>' +
+        '<button class="btn btn-sm" data-action="goto" data-page="data">+ Upload Excel / CSV</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="content">' +
+      kpiGrid([
+        kpiCard("Total Materials", all.length, "", isBaselineActive() ? "Baseline 8 material Excel" : "Dataset aktif Firebase"),
+        kpiCard("Lumpy Materials", cnt("Lumpy"), "", "ADI &gt; 1,32 &amp; CV&sup2; &gt; 0,49"),
+        kpiCard("Intermittent Materials", cnt("Intermittent"), "", "ADI &gt; 1,32 &amp; CV&sup2; &le; 0,49"),
+        kpiCard("Materials with Forecast", withF, "dari " + all.length, "punya &ge;1 kejadian forecast"),
+        kpiCard("Evaluasi Train/Test 50:50", nTT, "material", "rentang data &gt; 60 bulan"),
+        kpiCard("Evaluasi Demand Terakhir", all.length - nTT, "material", "rentang data &le; 60 bulan")
+      ]) +
+      '<div class="grid grid-3 section">' +
+        '<div class="card"><div class="kpi-label">Demand Classification (ADI-CV&sup2;)' + tip("ADI > 1,32 & CV² > 0,49 = Lumpy; ADI > 1,32 & CV² <= 0,49 = Intermittent; ADI <= 1,32 & CV² > 0,49 = Erratic; lainnya = Smooth.") + '</div>' + dist + '</div>' +
+        '<div class="card"><div class="kpi-label">Forecast Event Timeline (kejadian per tahun)' + tip(T_STAT) + '</div>' + fcTl + '</div>' +
+        '<div class="card"><div class="kpi-label">Metode Terbaik (MASE terendah)' + tip(T_EXCEL) + '</div>' + methodDist + '</div>' +
+      '</div>' +
+      '<div class="section">' +
+        '<div class="section-head"><div><div class="section-title">Daftar Material (' + filtered.length + ' dari ' + all.length + ')</div><div class="section-desc">Klik baris untuk membuka analisis mendalam per material.</div></div></div>' +
+        '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;justify-content:space-between;">' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+            classes.map(function (cl) { return '<button class="chip' + (state.filterClass === cl ? ' active' : '') + '" data-action="filter" data-class="' + cl + '">' + cl + '</button>'; }).join('') +
+          '</div>' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+            '<input class="field" id="ov-search" type="search" placeholder="Cari kode / nama material..." value="' + esc(state.searchQuery) + '" style="width:230px;">' +
+            '<select class="filter-select" id="ov-limit" style="padding:7px 28px 7px 10px;">' +
+              [25, 50, 100, 0].map(function (lim) {
+                return '<option value="' + lim + '"' + (state.pageLimit === lim ? ' selected' : '') + '>' + (lim === 0 ? 'Tampilkan semua' : lim + ' baris') + '</option>';
+              }).join('') +
+            '</select>' +
+          '</div>' +
+        '</div>' +
+        '<div class="card" style="padding:0;overflow-x:auto;">' +
+          '<table class="data-table"><thead><tr><th>Stock Code</th><th>Material</th><th>Classification</th><th>ADI</th><th>CV&sup2;</th><th>Best Method</th><th>MASE</th><th>Evaluasi</th><th></th></tr></thead><tbody>' +
+            (shown.length ? shown.map(function (m) {
+              var cv = classColorVar(m.classification);
+              return '<tr class="clickable" data-action="select-detail" data-code="' + esc(m.code) + '">' +
+                '<td class="mono" style="font-weight:600;">' + esc(m.code) + '</td>' +
+                '<td>' + esc(m.name) + '</td>' +
+                '<td><span class="badge" style="background:var(--' + cv + '-dim);color:var(--' + cv + ');"><span class="badge-dot" style="background:var(--' + cv + ');"></span>' + esc(m.classification) + '</span></td>' +
+                '<td class="mono">' + fmtNum(m.adi, 2) + '</td>' +
+                '<td class="mono">' + fmtNum(m.cv2, 3) + '</td>' +
+                '<td style="font-weight:600;">' + esc(m.bestMethod) + '</td>' +
+                '<td class="mono">' + fmtNum(m.metrics[m.bestMethod].mase, 4) + '</td>' +
+                '<td style="font-size:12px;color:var(--muted);">' + (m.data.length > EVAL_LIMIT_MONTHS ? 'Train/Test 50:50' : 'Demand terakhir') + '</td>' +
+                '<td style="color:var(--faint);">&rarr;</td></tr>';
+            }).join('') : '<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--faint);">Tidak ada material yang sesuai filter.</td></tr>') +
+          '</tbody></table>' +
+        '</div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+/* ============================================================
+   RENDER: MATERIAL ANALYSIS
+   ============================================================ */
+function auditGridCard(m) {
+  var xs = m.data.map(function (r) { return r[1]; });
+  var rows = [["Croston", "&alpha;", m.alphaC, "croston"], ["SBA", "&alpha;", m.alphaS, "sba"], ["TSB", "&beta;", m.betaT, "tsb"]];
+  var bk = m.backend && m.backend.gridSearch;
+  var src = m.source === "excel"
+    ? 'Sumber: <strong>Baseline Excel</strong> (nilai parameter dan MSE terverifikasi identik dengan engine backend Python)'
+    : m.source === "backend_python"
+      ? 'Sumber: <strong>Backend Python FastAPI</strong> (formula excel-verified-v1, tersimpan di Firebase Firestore)'
+      : 'Sumber: <strong>Engine JavaScript lokal</strong> (preview sementara)';
+
+  return '<div class="section"><details class="card" style="cursor:pointer;"><summary style="font-weight:700;font-size:13.5px;">Detail Grid Search (dapat diaudit)</summary>' +
+    '<div style="font-size:12px;color:var(--muted);margin:10px 0;">' + src + ' &middot; 10.000 kandidat per metode (0,0001&ndash;1,0000) &middot; tie &rarr; nilai terkecil pertama.</div>' +
+    '<div style="overflow-x:auto;"><table style="width:100%;font-size:12.5px;border-collapse:collapse;"><tr style="text-align:left;color:var(--muted);"><th style="padding:5px 0;">Metode</th><th>Parameter</th><th>Rentang</th><th>Step</th><th>Objektif</th><th>Nilai optimal</th><th>MSE minimum</th><th>Kandidat di minimum</th></tr>' +
+    rows.map(function (r) {
+      var g = bk && bk[r[3]];
+      var mse = g ? g.minimum_mse : (m.metrics[r[0]] ? m.metrics[r[0]].mse : xlMse(xs, r[0], r[2]));
+      return '<tr style="border-top:1px solid var(--border);"><td style="padding:6px 0;font-weight:600;">' + r[0] + '</td><td>' + r[1] + '</td><td class="mono">0,0001&ndash;1,0000</td><td class="mono">0,0001</td><td>MSE one-step-ahead min</td><td class="mono">' + fmtNum(r[2], 4) + '</td><td class="mono">' + fmtNum(mse, 6) + '</td><td class="mono">' + (g ? g.n_candidates_at_minimum : '&mdash;') + '</td></tr>';
+    }).join('') + '</table></div></details></div>';
+}
+
+function evalCompareNote(bestEval, bestInSample, what) {
+  if (bestEval === bestInSample) {
+    return '<div class="callout" style="margin-top:14px;"><span>&#9989;</span><span>Metode terbaik pada evaluasi ini (' + what + ') adalah <strong>' + esc(bestEval) + '</strong>, konsisten dengan metode terbaik in-sample.</span></div>';
+  }
+  return '<div class="callout warn" style="margin-top:14px;"><span>&#8505;</span><span>Metode terbaik pada evaluasi ini (' + what + ') adalah <strong>' + esc(bestEval) + '</strong>, berbeda dari metode terbaik in-sample (<strong>' + esc(bestInSample) + '</strong>). Sumber perbedaan: optimasi in-sample memakai seluruh data historis, sedangkan evaluasi ini mengoptimasi ulang &alpha;/&beta; <em>hanya pada data Train</em> tanpa data leakage.</span></div>';
+}
+
+function evalChartSvg(ev, method) {
+  var rows = ev.rows || [], n = rows.length;
+  if (!n) return "";
+  var W = 900, H = 210, pad = 8, bot = 22, top = 12, bw = (W - pad * 2) / n;
+  var maxV = 1;
+  rows.forEach(function (r) { maxV = Math.max(maxV, r.actual, r[method] || 0); });
+  var ph = H - bot - top;
+  var s = '<line x1="' + pad + '" y1="' + (H - bot) + '" x2="' + (W - pad) + '" y2="' + (H - bot) + '" stroke="var(--border-strong)"/>';
+  rows.forEach(function (r, i) {
+    if (r.actual > 0) {
+      var h = Math.max(3, r.actual / maxV * ph);
+      s += '<rect x="' + (pad + i * bw + 1) + '" y="' + (H - bot - h) + '" width="' + Math.max(1.5, bw - 2) + '" height="' + h + '" fill="var(--accent)"><title>' + esc(r.m) + ' aktual: ' + r.actual + '</title></rect>';
+    }
+  });
+  var pts = rows.map(function (r, i) { return (pad + i * bw + bw / 2) + ',' + (H - bot - (r[method] || 0) / maxV * ph); }).join(' ');
+  s += '<polyline points="' + pts + '" fill="none" stroke="var(--teal)" stroke-width="2"/>';
+  rows.forEach(function (r, i) {
+    s += '<circle cx="' + (pad + i * bw + bw / 2) + '" cy="' + (H - bot - (r[method] || 0) / maxV * ph) + '" r="2.2" fill="var(--teal)"><title>' + esc(r.m) + ' forecast ' + esc(method) + ': ' + fmtNum(r[method], 4) + '</title></circle>';
+  });
+  s += '<text x="' + pad + '" y="' + (H - 6) + '" font-size="10.5" fill="var(--faint)">' + esc(rows[0].m) + '</text>' +
+       '<text x="' + (W - pad) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10.5" fill="var(--faint)">' + esc(rows[n - 1].m) + '</text>' +
+       '<text x="' + pad + '" y="' + (top + 2) + '" font-size="10.5" fill="var(--faint)">maks ' + fmtNum(maxV, 2) + '</text>';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;">' + s + '</svg>';
+}
+
+function renderEvaluationSection(m) {
+  var ev = evaluationFor(m), N = m.data.length, xlBest = m.bestMethod;
+  var sepNote = '<div class="callout" style="margin-bottom:14px;"><span>&#8505;</span><span><strong>Evaluasi Tanpa Data Leakage:</strong> Parameter &alpha;/&beta; dioptimasi ulang <strong>hanya pada data Train</strong> (grid search 0,0001&ndash;1,0000). Aturan pembagian: rentang data &gt; 60 bulan (&gt; 5 tahun) memakai Train/Test 50:50 kronologis; &le; 60 bulan (&le; 5 tahun) memakai data awal hingga sebelum demand aktual terakhir.</span></div>';
+  var warnHtml = (ev && ev.warnings && ev.warnings.length)
+    ? ev.warnings.map(function (w) { return '<div class="callout warn" style="margin-bottom:12px;"><span>&#9888;</span><span>' + esc(w) + '</span></div>'; }).join('')
+    : '';
+
+  if (!ev || ev.insufficient) {
+    return '<div class="section"><div class="section-head"><div><div class="section-title">Evaluasi Out-of-Sample</div></div></div>' + sepNote + warnHtml +
+      '<div class="callout warn"><span>&#9888;</span><span>Data historis terlalu pendek untuk evaluasi ini (minimal 3 bulan data Train).</span></div></div>';
+  }
+  var paramCard = kpiCard("&alpha;/&beta; dari Train", fmtNum(ev.params.Croston, 4) + " / " + fmtNum(ev.params.SBA, 4) + " / " + fmtNum(ev.params.TSB, 4), "", "Croston / SBA / TSB (hanya Train)");
+
+  if (ev.mode === "traintest") {
+    var bt = ev.bestTest;
+    var methodCards = ["Croston", "SBA", "TSB"].map(function (k) {
+      var e = ev.metrics[k], isBest = k === bt, isXl = k === xlBest;
+      return '<div class="card" style="' + (isBest ? 'border-color:var(--teal);box-shadow:0 0 0 1px var(--teal);' : '') + '">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-weight:700;font-size:15px;">' + k + '</span><span>' +
+        (isBest ? '<span style="font-size:10.5px;font-weight:700;color:var(--teal);">TERBAIK (TEST)</span>' : '') +
+        (isXl ? '<span style="font-size:10.5px;font-weight:700;color:var(--accent);margin-left:6px;">METODE UTAMA</span>' : '') + '</span></div>' +
+        metricRow("MASE", e.mase === null ? "n/a" : fmtNum(e.mase, 4), true) +
+        metricRow("MAD", e.mad === null ? "n/a" : fmtNum(e.mad, 4), false) +
+        metricRow("MSE", e.mse === null ? "n/a" : fmtNum(e.mse, 4), false) +
+        metricRow("RMSSE", e.rmsse === null ? "n/a" : fmtNum(e.rmsse, 4), false) +
+        metricRow("MAPE", pctFmt(e.mape), false) + metricRow("SMAPE", pctFmt(e.smape), false) + metricRow("WAPE", pctFmt(e.wape), false) +
+        '<div style="font-size:11px;color:var(--faint);margin-top:8px;">n uji = ' + e.n + ' bulan</div></div>';
+    }).join('');
+    var tableRows = (ev.rows || []).map(function (r) {
+      return tr([fmtMonth(r.m), '<span class="mono" style="font-weight:600;">' + fmtNum(r.actual, 4) + '</span>', fmtNum(r.Croston, 4), fmtNum(r.SBA, 4), fmtNum(r.TSB, 4), '<span class="mono">' + fmtNum(r.actual - r[xlBest], 4) + '</span>']);
+    });
+    return '<div class="section">' +
+      '<div class="section-head"><div><div class="section-title">Evaluasi &mdash; Train/Test 50:50 (rentang data &gt; 5 tahun)</div>' +
+      '<div class="section-desc">Rentang data ' + spanText(N) + ' (&gt; 60 bulan), dibagi kronologis 50% Train dan 50% Test.</div></div></div>' + sepNote + warnHtml +
+      '<div class="grid grid-4" style="margin-bottom:14px;">' +
+        kpiCard("Periode Train", ev.trainSize, "bulan", fmtMonth(ev.trainRange[0]) + " &ndash; " + fmtMonth(ev.trainRange[1]) + " &middot; " + ev.nzTrain + " kejadian") +
+        kpiCard("Periode Test", ev.testSize, "bulan", fmtMonth(ev.testRange[0]) + " &ndash; " + fmtMonth(ev.testRange[1]) + " &middot; " + ev.nzTest + " kejadian") +
+        paramCard +
+        kpiCard("MASE Terbaik (Test)", bt && ev.metrics[bt].mase !== null ? fmtNum(ev.metrics[bt].mase, 4) : "n/a", "", bt ? "metode " + bt : "") +
+      '</div>' +
+      '<div class="grid grid-3">' + methodCards + '</div>' +
+      '<div class="card" style="margin-top:14px;">' + evalChartSvg(ev, xlBest) +
+        '<div style="font-size:11px;color:var(--faint);margin-top:8px;"><span style="color:var(--accent);font-weight:700;">&#9632;</span> demand aktual Test &nbsp; <span style="color:var(--teal);font-weight:700;">&#9679;</span> forecast one-step-ahead (' + esc(xlBest) + ')</div></div>' +
+      '<div style="margin-top:14px;"><div class="section-title" style="margin-bottom:8px;font-size:13.5px;">Forecast vs Demand Aktual &mdash; Periode Test</div>' +
+        '<div style="max-height:360px;overflow:auto;border-radius:10px;">' + tbl(["Bulan Test", "Demand Aktual", "Forecast Croston", "Forecast SBA", "Forecast TSB", "Aktual &minus; Forecast " + esc(xlBest)], tableRows) + '</div></div>' +
+      (bt ? evalCompareNote(bt, xlBest, "MASE terendah pada data Test") : '') +
+    '</div>';
+  }
+
+  var rowsHtml = ["Croston", "SBA", "TSB"].map(function (k) {
+    var r = ev.results[k], isXl = k === xlBest;
+    var pct = r.pct === null ? '<span style="color:var(--faint);">n/a</span>' : fmtNum(r.pct, 1) + '%';
+    return tr([
+      '<strong>' + k + '</strong>' + (isXl ? ' <span style="font-size:10.5px;font-weight:700;color:var(--accent);">METODE UTAMA</span>' : '') + (k === ev.bestAbs ? ' <span style="font-size:10.5px;font-weight:700;color:var(--teal);">SELISIH TERKECIL</span>' : ''),
+      k === "TSB" ? "&beta; = " + fmtNum(ev.params.TSB, 4) : "&alpha; = " + fmtNum(ev.params[k], 4),
+      '<span class="mono" style="font-weight:600;">' + fmtNum(r.forecast, 4) + '</span>',
+      '<span class="mono" style="font-weight:600;">' + fmtNum(ev.actual, 4) + '</span>',
+      '<span class="mono">' + fmtNum(r.diff, 4) + '</span>',
+      '<span class="mono">' + fmtNum(r.absErr, 4) + '</span>',
+      pct
+    ]);
+  });
+  return '<div class="section">' +
+    '<div class="section-head"><div><div class="section-title">Evaluasi &mdash; Forecast vs Demand Aktual Terakhir (rentang data &le; 5 tahun)</div>' +
+    '<div class="section-desc">Rentang data ' + spanText(N) + ' (&le; 60 bulan). Model dilatih dari awal data hingga bulan sebelum demand aktual terakhir (bulan nol dipertahankan), lalu dievaluasi terhadap demand aktual terakhir.</div></div></div>' + sepNote + warnHtml +
+    '<div class="grid grid-4" style="margin-bottom:14px;">' +
+      kpiCard("Data Train", ev.trainSize, "bulan", fmtMonth(ev.trainRange[0]) + " &ndash; " + fmtMonth(ev.trainRange[1]) + " &middot; " + ev.nzTrain + " kejadian") +
+      kpiCard("Target Demand Terakhir", fmtMonth(ev.targetMonth), "", "tidak ikut Train" + (ev.trailingZeros > 0 ? " &middot; " + ev.trailingZeros + " bln nol sesudahnya" : "")) +
+      kpiCard("Demand Aktual Target", fmtNum(ev.actual, 4), "", "nilai aktual pembanding") +
+      paramCard +
+    '</div>' +
+    '<div style="overflow-x:auto;">' + tbl(["Metode", "Parameter (dari Train)", "Forecast Bulan Target", "Demand Aktual", "Selisih", "Selisih Absolut", "% Error"], rowsHtml) + '</div>' +
+    evalCompareNote(ev.bestAbs, xlBest, "selisih absolut terkecil pada bulan target") +
+  '</div>';
+}
+
+function renderDetail() {
+  var m = mat();
+  if (!m) return emptyBox("Tidak ada material", "Pilih atau unggah dataset terlebih dahulu.");
+  var cv = classColorVar(m.classification);
+  var maxVal = Math.max.apply(null, m.data.map(function (d) { return d[1]; }).concat([1]));
+
+  return (
+    '<div class="topbar">' +
+      '<div><div class="topbar-title">Material Analysis</div><div class="topbar-sub">Klasifikasi ADI/CV&sup2;, optimasi &alpha;/&beta;, dan perbandingan metode forecasting</div></div>' +
+      materialSelector() +
+    '</div>' +
+    '<div class="content">' +
+      '<div class="section" style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">' +
+        '<div>' +
+          '<div class="mono" style="font-size:13px;color:var(--muted);margin-bottom:4px;">' + esc(state.selected) + '</div>' +
+          '<div style="font-size:22px;font-weight:800;">' + esc(m.name) + '</div>' +
+          '<div style="font-size:12.5px;color:var(--faint);margin-top:4px;">Data: ' + esc(m.range) + ' &middot; Dataset: ' + esc(activeDatasetLabel()) + '</div>' +
+        '</div>' +
+        '<span class="badge" style="background:var(--' + cv + '-dim);color:var(--' + cv + ');font-size:13.5px;padding:7px 16px;"><span class="badge-dot" style="background:var(--' + cv + ');"></span>' + esc(m.classification) + '</span>' +
+      '</div>' +
+      '<div class="grid grid-4 section">' +
+        kpiCard("ADI (interval rata-rata)", fmtNum(m.adi, 4), "bulan", m.adi === null ? "tidak tersedia" : (m.adi > 1.32 ? "&gt; 1,32 (jarang)" : "&le; 1,32 (rutin)")) +
+        kpiCard("CV&sup2; (variasi besaran)", fmtNum(m.cv2, 4), "", m.cv2 === null ? "tidak tersedia" : (m.cv2 > 0.49 ? "&gt; 0,49 (fluktuatif)" : "&le; 0,49 (stabil)")) +
+        kpiCard("Metode Terbaik", esc(m.bestMethod), "", m.source === "excel" ? "Baseline Excel (MASE terendah)" : "MASE in-sample terendah") +
+        kpiCard("MASE " + esc(m.bestMethod), fmtNum(m.metrics[m.bestMethod].mase, 4), "", m.metrics[m.bestMethod].mase < 1 ? "&#10003; lebih baik dari naive" : "") +
+      '</div>' +
+      '<div class="grid grid-4 section">' +
+        kpiCard("Optimal " + (m.bestMethod === "TSB" ? "&beta;" : "&alpha;") + " (" + esc(m.bestMethod) + ")", fmtNum(m.bestMethod === "Croston" ? m.alphaC : m.bestMethod === "SBA" ? m.alphaS : m.betaT, 4), "", "grid search 0,0001&ndash;1,0000") +
+        kpiCard("Forecast / Bulan", fmtNum(m.nextForecast, 4), "", "estimasi metode terbaik") +
+        kpiCard("Prediksi Kejadian Berikutnya", fmtMonth(m.nextMonth), "", "Qty &approx; " + fmtNum(m.nextQty, 4) + " &middot; interval " + fmtNum(m.interval, 2) + " bln") +
+        kpiCard("Bulan Data / Kejadian", m.data.length + " / " + countNonzero(m.data), "bln", "horizon " + m.horizonMonths + " bln (" + (m.predictions || []).length + " prediksi)") +
+      '</div>' +
+      '<div class="section">' +
+        '<div class="section-head"><div class="section-title">Riwayat Demand Bulanan (Xt aktual)</div></div>' +
+        '<div class="card">' +
+          '<div class="bars-wrap">' +
+            m.data.map(function (d) {
+              var h = d[1] > 0 ? Math.max(4, (d[1] / maxVal) * 120) : 2;
+              return '<div class="bar" title="' + esc(d[0]) + ': ' + d[1] + '" style="width:' + Math.max(2, Math.min(9, 640 / m.data.length)) + 'px;height:' + h + 'px;background:' + (d[1] > 0 ? 'var(--accent)' : 'var(--border-strong)') + ';"></div>';
+            }).join('') +
+          '</div>' +
+          '<div style="display:flex;justify-content:space-between;margin-top:10px;font-size:11px;color:var(--faint);" class="mono"><span>' + esc(m.data[0][0]) + '</span><span>' + esc(m.data[m.data.length - 1][0]) + '</span></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="section">' +
+        '<div class="section-head"><div class="section-title">Perbandingan Metode Forecasting (In-Sample)</div>' +
+        '<div class="section-desc">Parameter &alpha;/&beta; dioptimasi dengan grid search 0,0001&ndash;1,0000 (step 0,0001, MSE one-step-ahead minimum) menggunakan rumus Croston, SBA, dan TSB terverifikasi Excel.</div></div>' +
+        '<div class="grid grid-3">' +
+          ["Croston", "SBA", "TSB"].map(function (method) {
+            var isBest = method === m.bestMethod;
+            var met = m.metrics[method];
+            var param = method === "Croston" ? m.alphaC : method === "SBA" ? m.alphaS : m.betaT;
+            return (
+              '<div class="card" style="' + (isBest ? 'border-color:var(--smooth);box-shadow:0 0 0 1px var(--smooth);' : '') + '">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+                  '<span style="font-weight:700;font-size:15px;">' + method + '</span>' +
+                  (isBest ? '<span style="font-size:10.5px;font-weight:700;color:var(--smooth);">TERBAIK (MASE)</span>' : '') +
+                '</div>' +
+                metricRow("MASE", fmtNum(met.mase, 4), true) +
+                metricRow("MSE", fmtNum(met.mse, 4), false) +
+                metricRow("MAD", fmtNum(met.mad, 4), false) +
+                metricRow("RMSSE", fmtNum(met.rmsse, 4), false) +
+                metricRow("MAPE", pctFmt(met.mape), false) +
+                metricRow("SMAPE", pctFmt(met.smape), false) +
+                metricRow("WAPE", pctFmt(met.wape), false) +
+                '<div style="font-size:11px;color:var(--faint);margin-top:8px;">Parameter ' + (method === "TSB" ? "&beta;" : "&alpha;") + ': <span class="mono">' + fmtNum(param, 4) + '</span></div>' +
+              '</div>'
+            );
+          }).join('') +
+        '</div>' +
+      '</div>' +
+      auditGridCard(m) +
+      renderEvaluationSection(m) +
+      sec("Statistical Forecast", "Proyeksi kejadian demand ke depan untuk material terpilih.", statTableFor(state.selected), T_STAT) +
+    '</div>'
+  );
+}
+
+/* ============================================================
+   RENDER: STATISTICAL FORECAST
+   ============================================================ */
+function renderForecast() {
+  var m = mat();
+  if (!m) return emptyBox("Tidak ada material", "");
+  var N = m.data.length;
+  var lastIdx = monthToIndex(m.data[N - 1][0]);
+  var preds = (m.predictions || []).map(function (p) { return { m: p[0], idx: monthToIndex(p[0]), qty: p[1] }; });
+  var param = m.bestMethod === "Croston" ? m.alphaC : m.bestMethod === "SBA" ? m.alphaS : m.betaT;
+  var pname = m.bestMethod === "TSB" ? "&beta;" : "&alpha;";
+  var W = 900, H = 230, pad = 8, bot = 22, top = 14, bw = (W - pad * 2) / (2 * N);
+  var maxV = Math.max.apply(null, m.data.map(function (d) { return d[1]; }).concat(preds.map(function (p) { return p.qty; }), [1]));
+  function hh(v) { return Math.max(3, (v / maxV) * (H - bot - top)); }
+  var bars = "";
+  m.data.forEach(function (d, i) { if (d[1] > 0) { var h = hh(d[1]); bars += '<rect x="' + (pad + i * bw) + '" y="' + (H - bot - h) + '" width="' + Math.max(1.5, bw - 1) + '" height="' + h + '" fill="var(--accent)"><title>' + esc(d[0]) + ': ' + d[1] + '</title></rect>'; } });
+  preds.forEach(function (p) { var i = N + (p.idx - lastIdx) - 1, h = hh(p.qty); bars += '<rect x="' + (pad + i * bw) + '" y="' + (H - bot - h) + '" width="' + Math.max(1.5, bw - 1) + '" height="' + h + '" fill="var(--teal)"><title>' + esc(p.m) + ': ' + fmtNum(p.qty, 4) + '</title></rect>'; });
+  var bx = pad + N * bw;
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;">' +
+    '<line x1="' + pad + '" y1="' + (H - bot) + '" x2="' + (W - pad) + '" y2="' + (H - bot) + '" stroke="var(--border-strong)"/>' + bars +
+    '<line x1="' + bx + '" y1="' + top + '" x2="' + bx + '" y2="' + (H - bot) + '" stroke="var(--faint)" stroke-dasharray="4 3"/>' +
+    '<text x="' + (bx - 6) + '" y="' + (top + 8) + '" text-anchor="end" font-size="11" fill="var(--faint)">Historis</text>' +
+    '<text x="' + (bx + 6) + '" y="' + (top + 8) + '" font-size="11" fill="var(--faint)">Forecast</text>' +
+    '<text x="' + pad + '" y="' + (H - 6) + '" font-size="10.5" fill="var(--faint)">' + esc(m.data[0][0]) + '</text>' +
+    '<text x="' + (W - pad) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10.5" fill="var(--faint)">' + esc(indexToMonth(lastIdx + N)) + '</text></svg>';
+
+  var byYear = {};
+  preds.forEach(function (p) { var y = p.m.slice(0, 4); byYear[y] = byYear[y] || { n: 0, q: 0 }; byYear[y].n++; byYear[y].q += p.qty; });
+  var yrs = Object.keys(byYear).sort();
+
+  return (
+    '<div class="topbar"><div><div class="topbar-title">Statistical Forecast</div><div class="topbar-sub">Proyeksi permintaan aktual &rarr; forecast untuk dataset aktif: <strong>' + esc(activeDatasetLabel()) + '</strong></div></div>' + materialSelector() + '</div>' +
+    '<div class="content">' +
+      '<div class="grid grid-4 section">' +
+        kpiCard("Metode Terpilih", esc(m.bestMethod), "", "MASE in-sample terendah") +
+        kpiCard("Parameter", fmtNum(param, 4), "", pname + " " + esc(m.bestMethod)) +
+        kpiCard("Horizon", N + " bulan", "", "= jumlah bulan historis") +
+        kpiCard("Periode Forecast", fmtMonth(indexToMonth(lastIdx + 1)), "", "s.d. " + fmtMonth(indexToMonth(lastIdx + N))) +
+      '</div>' +
+      '<div class="section"><div class="section-head"><div class="section-title">Aktual &rarr; Forecast</div></div><div class="card">' + svg +
+        '<div style="font-size:11px;color:var(--faint);margin-top:8px;"><span style="color:var(--accent);font-weight:700;">&#9632;</span> demand aktual (' + N + ' bulan) &nbsp; <span style="color:var(--teal);font-weight:700;">&#9632;</span> kejadian demand prediksi</div></div></div>' +
+      '<div class="section"><div class="section-head"><div class="section-title">Ringkasan per Tahun</div></div>' +
+        (preds.length ? '<div class="card"><table style="width:100%;font-size:12.5px;border-collapse:collapse;"><tr style="text-align:left;color:var(--muted);"><th style="padding:6px 0;">Tahun</th><th>Kejadian demand</th><th>Total qty</th></tr>' +
+          yrs.map(function (y) { return '<tr style="border-top:1px solid var(--border);"><td style="padding:7px 0;" class="mono">' + esc(y) + '</td><td>' + byYear[y].n + '</td><td class="mono">' + fmtNum(byYear[y].q, 2) + '</td></tr>'; }).join('') +
+          '</table><div style="font-size:11px;color:var(--faint);margin-top:8px;">Kejadian: ' + preds.map(function (p) { return esc(p.m); }).join(', ') + '</div></div>'
+        : emptyBox("Tidak ada kejadian demand diprediksi pada horizon ini", "")) +
+      '</div>' +
+      sec("Tabel Statistical Forecast", "Material terpilih: " + esc(state.selected) + " &mdash; metode " + esc(m.bestMethod), statTableFor(state.selected), T_STAT) +
+      sec("Forecast Semua Material (" + codes().length + " material)", "Stock code, bulan, qty, metode terbaik, MASE, ADI, CV&sup2;, klasifikasi.",
+        '<div style="margin-bottom:10px;"><input class="field" id="fc-search" type="search" placeholder="Cari kode atau nama material..." value="' + esc(state.searchQuery) + '" style="width:260px;"></div>' + allForecastTable()) +
+    '</div>'
+  );
+}
+
+/* ============================================================
+   RENDER: UPLOAD & PROSES (DYNAMIC EXCEL/CSV -> BACKEND -> FIREBASE)
+   ============================================================ */
+function renderData() {
+  var cfg = window.APP_CONFIG || {};
+  return (
+    '<div class="topbar"><div><div class="topbar-title">Upload &amp; Proses Forecasting</div><div class="topbar-sub">Unggah file Excel (.xlsx, .xlsm) atau CSV untuk analisis dinamis di backend Python &amp; penyimpanan permanen ke Firebase</div></div></div>' +
+    '<div class="content">' +
+      '<div class="section">' +
+        '<div class="callout">' +
+          '<span>&#9432;</span>' +
+          '<span><strong>Alur Permanen Berbasis Akun Firebase:</strong> File yang Anda unggah akan divalidasi oleh backend Python FastAPI (mendeteksi jumlah material secara otomatis: 8, 20, 50, 100+), file asli diarsipkan ke Firebase Storage, seluruh perhitungan ADI/CV&sup2;, grid search 0,0001, Croston/SBA/TSB, dan evaluasi tanpa data leakage dijalankan secara asinkron, lalu disimpan permanen ke Firestore di bawah UID akun Anda dan disinkronkan otomatis lintas perangkat.</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="section">' +
+        '<div class="section-head"><div class="section-title">1. Koneksi Backend Python FastAPI</div><div class="section-desc">Environment: <strong class="mono">' + esc(cfg.ENVIRONMENT || "development") + '</strong> &middot; Komunikasi menggunakan HTTPS &amp; Firebase ID Token.</div></div>' +
+        '<div class="card">' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+            '<span id="bb-dot" style="width:10px;height:10px;border-radius:50%;background:var(--muted);display:inline-block;"></span>' +
+            '<input id="bb-url" class="field mono" style="flex:1;min-width:240px;" value="' + esc(bb.base) + '" placeholder="https://forecast-studio-api.onrender.com" aria-label="URL Backend API">' +
+            '<button class="btn-ghost" id="bb-check">Cek Koneksi</button>' +
+            '<button class="btn-ghost" id="bb-reset-url" title="Kembali ke URL bawaan config.js">Reset Default</button>' +
+          '</div>' +
+          '<div id="bb-status" style="margin-top:10px;font-size:12.5px;color:var(--muted);"></div>' +
+          '<div id="bb-progress" style="margin-top:10px;display:none;"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="section">' +
+        '<div class="section-head"><div class="section-title">2. Unggah &amp; Validasi File Excel / CSV</div><div class="section-desc">Kolom yang dikenali otomatis: <span class="mono">kode / stock_code</span>, <span class="mono">nama / material</span>, <span class="mono">bulan / periode (YYYY-MM / tanggal Excel)</span>, <span class="mono">qty / demand / iss</span>. Setiap upload membuat record dataset baru dan tidak menimpa history sebelumnya.</div></div>' +
+        '<div class="card">' +
+          '<div class="upload-zone" id="bb-dropzone">' +
+            '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">Tarik file Excel (.xlsx, .xlsm) atau CSV ke sini, atau</div>' +
+            '<button class="btn" id="bb-pick"' + (bb.busy || bb.uploading ? ' disabled' : '') + '>Pilih File Excel / CSV</button>' +
+            '<input type="file" id="bb-file" accept=".xlsx,.xlsm,.csv" style="display:none;">' +
+            '<div style="font-size:11.5px;color:var(--faint);margin-top:10px;">File asli tidak akan diubah. Ringkasan validasi akan ditampilkan sebelum proses forecasting dijalankan.</div>' +
+          '</div>' +
+          '<div id="bb-report"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="section">' +
+        '<details class="card">' +
+          '<summary style="font-weight:600;font-size:13px;cursor:pointer;color:var(--muted);">Mode Preview Offline CSV (tanpa backend &amp; tidak disimpan ke Firebase)</summary>' +
+          '<div style="margin-top:12px;">' +
+            '<div class="callout warn" style="margin-bottom:12px;"><span>&#9888;</span><span>Opsi ini hanya untuk inspeksi lokal sementara bila backend sedang tidak tersedia. Hasil preview lokal <strong>tidak disimpan ke Firebase</strong> dan akan kembali ke dataset aktif saat halaman dimuat ulang.</span></div>' +
+            '<button class="btn-ghost btn-sm" data-action="browse-csv">Pilih CSV untuk Preview Lokal</button>' +
+            '<input type="file" id="csv-input" accept=".csv" style="display:none;">' +
+            '<div id="upload-status" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>' +
+          '</div>' +
+        '</details>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+/* ============================================================
+   RENDER: DATASETS & HISTORY PER AKUN FIREBASE
+   ============================================================ */
+function renderDatasets() {
+  var datasets = state.datasets || [];
+  var detailDs = state.detailDatasetId ? datasets.find(function (d) { return d.datasetId === state.detailDatasetId; }) : null;
+
+  var baselineCard =
+    '<div class="card section" style="' + (isBaselineActive() ? 'border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);' : '') + '">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;">' +
+        '<div>' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+            '<span style="font-weight:700;font-size:15px;">Baseline Awal &mdash; 8 Material Uji Excel</span>' +
+            '<span class="badge badge-baseline">Baseline Permanen</span>' +
+            (isBaselineActive() ? '<span class="badge badge-active">Sedang Aktif</span>' : '') +
+          '</div>' +
+          '<div style="font-size:12.5px;color:var(--muted);margin-top:4px;">Data referensi terverifikasi (8 material, periode 2020-01 s.d. 2026-01). Tidak dapat dihapus permanen dan selalu dapat diaktifkan kembali kapan saja.</div>' +
+        '</div>' +
+        '<div>' +
+          (isBaselineActive()
+            ? '<span style="font-size:12px;color:var(--smooth);font-weight:600;">&#10003; Aktif di dashboard</span>'
+            : '<button class="btn-ghost btn-sm" data-action="activate-dataset" data-id="baseline">Aktifkan Baseline Awal</button>') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  var historyHtml = !datasets.length
+    ? emptyBox("Belum ada riwayat dataset yang diunggah", "Unggah file Excel (.xlsx/.xlsm) atau CSV pada halaman Upload &amp; Proses untuk membuat workspace dataset pertama Anda.")
+    : tbl(
+        ["Status", "Nama Dataset", "File Asli", "Material", "Rentang Periode", "Waktu Upload", "Aksi"],
+        datasets.map(function (ds) {
+          var isAct = ds.datasetId === state.activeDatasetId && !state.localPreviewOnly;
+          var badge = isAct
+            ? '<span class="badge badge-active">Dataset Aktif</span>'
+            : ds.status === "completed"
+              ? '<span class="badge badge-history">Historis</span>'
+              : ds.status === "failed"
+                ? '<span class="badge badge-error">Gagal</span>'
+                : '<span class="badge badge-warn">Diproses</span>';
+
+          var actions = '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+          if (ds.status === "completed" && !isAct) {
+            actions += '<button class="btn btn-sm" data-action="activate-dataset" data-id="' + esc(ds.datasetId) + '">Aktifkan</button>';
+          }
+          actions += '<button class="btn-ghost btn-sm" data-action="toggle-ds-detail" data-id="' + esc(ds.datasetId) + '">' + (state.detailDatasetId === ds.datasetId ? 'Tutup Detail' : 'Detail') + '</button>';
+          if (ds.storagePath) {
+            actions += '<button class="btn-ghost btn-sm" data-action="download-ds" data-id="' + esc(ds.datasetId) + '">Unduh File</button>';
+          }
+          actions += '<button class="btn-danger" data-action="delete-ds" data-id="' + esc(ds.datasetId) + '">Hapus</button>';
+          actions += '</div>';
+
+          return tr([
+            badge,
+            '<div style="font-weight:600;">' + esc(ds.name || ds.datasetId) + '</div><div class="mono" style="font-size:10.5px;color:var(--faint);">' + esc(ds.datasetId) + '</div>',
+            '<span class="mono" style="font-size:12px;">' + esc(ds.originalFilename || "-") + '</span>',
+            '<span class="mono" style="font-weight:600;">' + (ds.materialCount || 0) + '</span>',
+            '<span class="mono" style="font-size:12px;">' + esc(ds.periodMin || "-") + ' &ndash; ' + esc(ds.periodMax || "-") + '</span>',
+            '<span style="font-size:12px;color:var(--muted);">' + esc(fmtDateTime(ds.uploadedAt)) + '</span>',
+            actions
+          ]);
+        })
+      );
+
+  var detailHtml = "";
+  if (detailDs) {
+    var sr = detailDs.summaryResults || {};
+    var cc = sr.classificationCounts || {};
+    var mc = sr.bestMethodCounts || {};
+    var fc = detailDs.forecastingConfig || {};
+    detailHtml =
+      '<div class="card section" style="border-color:var(--accent);">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+          '<div><div style="font-size:15px;font-weight:700;">Detail Dataset: ' + esc(detailDs.name || detailDs.datasetId) + '</div><div class="mono" style="font-size:11.5px;color:var(--muted);">ID: ' + esc(detailDs.datasetId) + ' &middot; File: ' + esc(detailDs.originalFilename || "-") + '</div></div>' +
+          '<button class="btn-ghost btn-sm" data-action="toggle-ds-detail" data-id="' + esc(detailDs.datasetId) + '">Tutup</button>' +
+        '</div>' +
+        (detailDs.errorMessage ? '<div class="callout err" style="margin-bottom:12px;"><span>&#9888;</span><span>Error: ' + esc(detailDs.errorMessage) + '</span></div>' : '') +
+        '<div class="grid grid-3">' +
+          '<div style="font-size:12.5px;">' +
+            '<div style="font-weight:700;margin-bottom:6px;">Metadata Upload</div>' +
+            metricRow("Status", esc(detailDs.status || "-"), true) +
+            metricRow("Waktu Upload", esc(fmtDateTime(detailDs.uploadedAt)), false) +
+            metricRow("Waktu Selesai", esc(fmtDateTime(detailDs.completedAt)), false) +
+            metricRow("Jumlah Material", detailDs.materialCount || 0, false) +
+            metricRow("Periode", esc((detailDs.periodMin || "-") + " s.d. " + (detailDs.periodMax || "-")), false) +
+          '</div>' +
+          '<div style="font-size:12.5px;">' +
+            '<div style="font-weight:700;margin-bottom:6px;">Ringkasan Hasil</div>' +
+            metricRow("Lumpy / Intermittent", (cc.Lumpy || 0) + " / " + (cc.Intermittent || 0), false) +
+            metricRow("Erratic / Smooth", (cc.Erratic || 0) + " / " + (cc.Smooth || 0), false) +
+            metricRow("Terbaik: Croston / SBA / TSB", (mc.Croston || 0) + " / " + (mc.SBA || 0) + " / " + (mc.TSB || 0), false) +
+            metricRow("Train/Test 50:50 (&gt;60 bln)", sr.evalTrainTestCount || 0, false) +
+            metricRow("Demand Terakhir (&le;60 bln)", sr.evalLastDemandCount || 0, false) +
+          '</div>' +
+          '<div style="font-size:12.5px;">' +
+            '<div style="font-weight:700;margin-bottom:6px;">Konfigurasi Forecasting</div>' +
+            metricRow("Formula", esc(fc.formulaVersion || "excel-verified-v1"), false) +
+            metricRow("Grid Step", fmtNum(fc.gridStep || 0.0001, 4), false) +
+            metricRow("Objektif Optimasi", "MSE one-step-ahead", false) +
+            metricRow("Seleksi Metode", "MASE terendah", false) +
+            metricRow("Arsip Storage", detailDs.storagePath ? "Tersedia" : "Tidak ada", false) +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  return (
+    '<div class="topbar">' +
+      '<div><div class="topbar-title">Datasets &amp; History</div><div class="topbar-sub">Riwayat workspace permanen akun <strong>' + esc(state.user ? state.user.email : "") + '</strong> &middot; tersinkron real-time lintas perangkat</div></div>' +
+      '<button class="btn btn-sm" data-action="goto" data-page="data">+ Upload Dataset Baru</button>' +
+    '</div>' +
+    '<div class="content">' +
+      baselineCard +
+      detailHtml +
+      sec("Riwayat Upload Akun Anda (" + datasets.length + " dataset)", "Pilih dataset historis untuk membuka kembali seluruh hasil forecasting tanpa perlu upload ulang atau menghitung ulang.", historyHtml) +
+    '</div>'
+  );
+}
+
+/* ============================================================
+   RENDER: VALIDATION / AUDIT
+   ============================================================ */
+function renderAudit() {
+  var m = mat();
+  var allCodes = codes();
+  var shownCodes = allCodes.slice(0, 100);
+  var rowsF = shownCodes.map(function (c) {
+    var x = state.materials[c], n = x.data.length, gaps = 0;
+    for (var i = 1; i < n; i++) gaps += monthToIndex(x.data[i][0]) - monthToIndex(x.data[i - 1][0]) - 1;
+    var b = x.metrics[x.bestMethod], li = monthToIndex(x.data[n - 1][0]);
+    return tr([
+      '<span class="mono">' + esc(c) + '</span>',
+      n,
+      gaps === 0 ? '0 &#10003;' : '<span style="color:var(--lumpy);">' + gaps + '</span>',
+      x.data.filter(function (d) { return d[1] === 0; }).length,
+      countNonzero(x.data),
+      fmtNum(x.adi, 3),
+      fmtNum(x.cv2, 4),
+      esc(x.classification),
+      fmtNum(x.alphaC, 4),
+      fmtNum(x.alphaS, 4),
+      fmtNum(x.betaT, 4),
+      fmtNum(b.mse, 5),
+      fmtNum(b.mad, 4),
+      fmtNum(b.mase, 4),
+      fmtNum(b.rmsse, 4),
+      esc(evalSummaryText(x)),
+      '<strong>' + esc(x.bestMethod) + '</strong>',
+      x.horizonMonths + ' bln',
+      fmtMonth(indexToMonth(li + 1)) + ' &ndash; ' + fmtMonth(indexToMonth(li + x.horizonMonths)),
+      (x.predictions || []).length
+    ]);
+  });
+
+  var okTag = function (ok) { return ok ? '<span style="color:var(--smooth);font-weight:700;">OK</span>' : '<span style="color:var(--medium);font-weight:700;">PERIKSA</span>'; };
+  var integ = state.integrity.checks.map(function (c) { return tr([c.name, esc(c.res), okTag(c.ok)]); });
+  integ.push(tr(["Firebase Authentication UID", esc(state.user ? state.user.uid : "-"), okTag(!!state.user)]));
+  integ.push(tr(["Sinkronisasi Real-Time Firestore (onSnapshot)", state.syncLive ? "Aktif — perubahan lintas perangkat terdeteksi otomatis" : "Tidak aktif", okTag(state.syncLive)]));
+  integ.push(tr(["Dataset Aktif Saat Ini", esc(activeDatasetLabel()) + " (" + allCodes.length + " material)", okTag(!state.localPreviewOnly)]));
+  integ.push(tr(["Status Backend Python FastAPI", bb.online ? "Terhubung (" + esc(bb.base) + ")" : "Belum terhubung / belum dicek", okTag(!!bb.online)]));
+
+  var head = ["Kode", "Bulan", "Gap", "Bln=0", "Demand>0", "ADI", "CV&sup2;", "Klasifikasi", "&alpha; Croston", "&alpha; SBA", "&beta; TSB", "MSE", "MAD", "MASE", "RMSSE", "Evaluasi (>60 / &le;60)", "Terbaik", "Horizon", "Tanggal Forecast", "Prediksi"];
+
+  return (
+    '<div class="topbar"><div><div class="topbar-title">Validation / Audit</div><div class="topbar-sub">Integritas sistem, keamanan per UID, paritas rumus Excel, dan audit seluruh material aktif</div></div>' + materialSelector() + '</div>' +
+    '<div class="content">' +
+      sec("Integritas Sistem, Firebase &amp; Baseline", "Pemeriksaan status autentikasi, sinkronisasi Firestore, dan keutuhan baseline 8 material Excel.", tbl(["Pemeriksaan", "Hasil", "Status"], integ), T_EXCEL) +
+      sec("Audit Forecast &mdash; Dataset Aktif (" + allCodes.length + " material" + (allCodes.length > 100 ? ", menampilkan 100 pertama" : "") + ")",
+        "Seluruh parameter &alpha;/&beta; menggunakan grid search 0,0001&ndash;1,0000 dengan rumus Croston, SBA, dan TSB terverifikasi Excel. Evaluasi otomatis: &gt;60 bulan memakai Train/Test 50:50 kronologis; &le;60 bulan memakai perbandingan terhadap demand aktual terakhir.",
+        tbl(head, rowsF)) +
+      (m ? sec('Detail Material Terpilih: ' + esc(state.selected) + ' &mdash; ' + esc(m.name), (m.predictions || []).length + ' kejadian forecast, horizon ' + m.horizonMonths + ' bulan.',
+        tbl(["Metode", "Parameter", "MSE", "MAD", "MASE", "RMSSE"], ["Croston", "SBA", "TSB"].map(function (k) {
+          var e = m.metrics[k];
+          return tr([k, k === "TSB" ? "&beta; = " + fmtNum(m.betaT, 4) : "&alpha; = " + fmtNum(k === "Croston" ? m.alphaC : m.alphaS, 4), fmtNum(e.mse, 6), fmtNum(e.mad, 4), fmtNum(e.mase, 4), fmtNum(e.rmsse, 4)]);
+        })) + '<div style="margin-top:12px;">' + statTableFor(state.selected) + '</div>') : '') +
+    '</div>'
+  );
+}
+
+/* ============================================================
+   MAIN RENDER + EVENT BINDINGS
+   ============================================================ */
+function render() {
+  var app = document.getElementById("app");
+  if (!state.user) return;
+
+  var pageHtml = "";
+  if (state.workspaceLoading) {
+    pageHtml =
+      '<div class="topbar"><div><div class="topbar-title">Memuat Workspace...</div><div class="topbar-sub">Mengambil dataset aktif &amp; riwayat dari Firebase Firestore</div></div></div>' +
+      '<div class="content"><div class="card" style="text-align:center;padding:48px 24px;"><span class="spinner"></span><div style="margin-top:12px;font-weight:600;">Menyinkronkan data akun ' + esc(state.user.email) + '...</div><div style="font-size:12.5px;color:var(--muted);margin-top:4px;">Memeriksa activeDatasetId dan hasil forecasting tersimpan di Firebase.</div></div></div>';
+  } else {
+    if (state.page === "overview") pageHtml = renderOverview();
+    else if (state.page === "material") pageHtml = renderDetail();
+    else if (state.page === "forecast") pageHtml = renderForecast();
+    else if (state.page === "data") pageHtml = renderData();
+    else if (state.page === "datasets") pageHtml = renderDatasets();
+    else if (state.page === "audit") pageHtml = renderAudit();
+  }
+
+  var banner = "";
+  if (state.workspaceError) {
+    banner += '<div class="callout err section"><span>&#9888;</span><span style="flex:1;">' + esc(state.workspaceError) + '</span><button class="btn-ghost btn-sm" data-action="retry-sync">Coba Lagi</button></div>';
+  }
+  if (state.localPreviewOnly) {
+    banner += '<div class="callout warn section"><span>&#9888;</span><span><strong>MODE PREVIEW LOKAL (SEMENTARA)</strong> &mdash; data ini belum disimpan permanen ke Firebase. <button class="btn-danger-text" style="color:var(--accent);font-weight:600;" data-action="activate-dataset" data-id="baseline">Kembali ke Baseline Awal</button></span></div>';
+  }
+  if (banner) {
+    pageHtml = pageHtml.replace('<div class="content">', '<div class="content">' + banner);
+  }
+
+  app.innerHTML = renderNav() + '<div class="main">' + pageHtml + '</div>';
+  attachEvents();
+}
+
+function attachEvents() {
+  var app = document.getElementById("app");
+
+  var logoutBtn = app.querySelector('[data-action="logout"]');
+  if (logoutBtn) logoutBtn.addEventListener("click", async function () {
+    resetWorkspaceMemory();
+    try {
+      if (window.firebaseAuth && window.firebaseSignOut) await window.firebaseSignOut(window.firebaseAuth);
+    } catch (e) { console.warn("Firebase sign-out gagal:", e); }
+    renderLogin(null);
+  });
+
+  var retryBtn = app.querySelector('[data-action="retry-sync"]');
+  if (retryBtn) retryBtn.addEventListener("click", function () {
+    if (state.user) startWorkspaceSync(state.user);
+  });
+
+  app.querySelectorAll('[data-action="goto"]').forEach(function (el) {
+    el.addEventListener("click", function () { state.page = el.getAttribute("data-page"); render(); });
+  });
+  app.querySelectorAll('[data-action="filter"]').forEach(function (el) {
+    el.addEventListener("click", function () { state.filterClass = el.getAttribute("data-class"); render(); });
+  });
+  app.querySelectorAll('[data-action="select-detail"]').forEach(function (el) {
+    el.addEventListener("click", function () { state.selected = el.getAttribute("data-code"); state.page = "material"; render(); });
+  });
+
+  var sel = app.querySelector('[data-action="change-material"]');
+  if (sel) sel.addEventListener("change", function (e) { state.selected = e.target.value; render(); });
+
+  ["ov-search", "fc-search"].forEach(function (searchId) {
+    var el = document.getElementById(searchId);
+    if (el) {
+      el.addEventListener("input", function (e) {
+        var pos = e.target.selectionStart;
+        state.searchQuery = e.target.value;
+        render();
+        var nextInput = document.getElementById(searchId);
+        if (nextInput) { nextInput.focus(); try { nextInput.setSelectionRange(pos, pos); } catch (ex) {} }
+      });
+    }
+  });
+  var ovLimit = document.getElementById("ov-limit");
+  if (ovLimit) ovLimit.addEventListener("change", function (e) { state.pageLimit = Number(e.target.value); render(); });
+
+  // Dataset management actions
+  app.querySelectorAll('[data-action="activate-dataset"]').forEach(function (el) {
+    el.addEventListener("click", function () { activateDataset(el.getAttribute("data-id")); });
+  });
+  app.querySelectorAll('[data-action="toggle-ds-detail"]').forEach(function (el) {
+    el.addEventListener("click", function () {
+      var id = el.getAttribute("data-id");
+      state.detailDatasetId = state.detailDatasetId === id ? null : id;
+      render();
+    });
+  });
+  app.querySelectorAll('[data-action="download-ds"]').forEach(function (el) {
+    el.addEventListener("click", function () {
+      var id = el.getAttribute("data-id");
+      var ds = state.datasets.find(function (d) { return d.datasetId === id; });
+      if (ds) downloadOriginalDatasetFile(ds);
+    });
+  });
+  app.querySelectorAll('[data-action="delete-ds"]').forEach(function (el) {
+    el.addEventListener("click", function () {
+      var id = el.getAttribute("data-id");
+      var ds = state.datasets.find(function (d) { return d.datasetId === id; });
+      if (ds) deleteDatasetWithConfirm(ds);
+    });
+  });
+
+  // Backend Upload & Connection bindings
+  bindBackend();
+
+  // Offline CSV preview fallback
+  var browseBtn = app.querySelector('[data-action="browse-csv"]');
+  var csvInput = document.getElementById("csv-input");
+  if (browseBtn && csvInput) {
+    browseBtn.addEventListener("click", function () { csvInput.click(); });
+    csvInput.addEventListener("change", function (e) {
+      if (e.target.files && e.target.files[0]) handleOfflineCsvPreview(e.target.files[0]);
+    });
+  }
+}
+
+function bindBackend() {
+  var pick = document.getElementById("bb-pick"), inp = document.getElementById("bb-file");
+  if (pick && inp) {
+    pick.addEventListener("click", function () { inp.click(); });
+    inp.addEventListener("change", function (e) {
+      if (e.target.files && e.target.files[0]) {
+        var f = e.target.files[0];
+        e.target.value = "";
+        bbUploadAndValidate(f);
+      }
+    });
+  }
+  var zone = document.getElementById("bb-dropzone");
+  if (zone) {
+    zone.addEventListener("dragover", function (e) { e.preventDefault(); zone.classList.add("drag"); });
+    zone.addEventListener("dragleave", function () { zone.classList.remove("drag"); });
+    zone.addEventListener("drop", function (e) {
+      e.preventDefault(); zone.classList.remove("drag");
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) bbUploadAndValidate(e.dataTransfer.files[0]);
+    });
+  }
+  var checkBtn = document.getElementById("bb-check");
+  if (checkBtn) {
+    checkBtn.addEventListener("click", function () {
+      var urlEl = document.getElementById("bb-url");
+      bb.base = (urlEl ? urlEl.value.trim() : "").replace(/\/+$/, "");
+      try {
+        if (bb.base) localStorage.setItem(UI_PREF_API_KEY, bb.base);
+        else localStorage.removeItem(UI_PREF_API_KEY);
+      } catch (e) {}
+      bbCheck();
+    });
+  }
+  var resetUrlBtn = document.getElementById("bb-reset-url");
+  if (resetUrlBtn) {
+    resetUrlBtn.addEventListener("click", function () {
+      try { localStorage.removeItem(UI_PREF_API_KEY); } catch (e) {}
+      bb.base = defaultApiBase();
+      var urlEl = document.getElementById("bb-url");
+      if (urlEl) urlEl.value = bb.base;
+      bbCheck();
+    });
+  }
+  if (document.getElementById("bb-status")) {
+    bbPaint();
+    if (!bb.checked && !bb.busy) bbCheck();
+  }
+}
+
+/* ============================================================
+   OFFLINE CSV PREVIEW FALLBACK (NON-PERSISTENT)
+   ============================================================ */
+function loadPapaIfNeeded(callback) {
+  if (window.Papa) { callback(); return; }
+  var s = document.createElement("script");
+  s.src = "https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js";
+  s.onload = callback;
+  s.onerror = function () {
+    var statusEl = document.getElementById("upload-status");
+    if (statusEl) { statusEl.style.color = "var(--lumpy)"; statusEl.textContent = "Gagal memuat pembaca CSV dari CDN."; }
+  };
+  document.head.appendChild(s);
+}
+
+function handleOfflineCsvPreview(file) {
+  var statusEl = document.getElementById("upload-status");
+  if (statusEl) statusEl.textContent = "Memuat pembaca CSV...";
+  loadPapaIfNeeded(function () {
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: function (results) {
+        try {
+          var grouped = {};
+          results.data.forEach(function (r) {
+            var kode = String(r.kode || r.Kode || r.stock_code || "").trim();
+            var nama = String(r.nama || r.Nama || r.material || "").trim();
+            var bulan = String(r.bulan || r.Bulan || r.periode || "").trim();
+            var rawQty = String(r.qty !== undefined ? r.qty : (r.Qty !== undefined ? r.Qty : "")).trim().replace(",", ".");
+            var qty = Number(rawQty);
+            if (!kode || !/^\d{4}-(0[1-9]|1[0-2])$/.test(bulan) || rawQty === "" || !isFinite(qty) || qty < 0) return;
+            if (!grouped[kode]) grouped[kode] = { name: nama || kode, map: {} };
+            grouped[kode].map[bulan] = (grouped[kode].map[bulan] || 0) + qty;
+          });
+          var fresh = {};
+          Object.keys(grouped).forEach(function (code) {
+            var ks = Object.keys(grouped[code].map).sort();
+            var a = monthToIndex(ks[0]), b = monthToIndex(ks[ks.length - 1]);
+            var rows = [];
+            for (var i = a; i <= b; i++) {
+              var mo = indexToMonth(i);
+              rows.push([mo, grouped[code].map[mo] === undefined ? 0 : grouped[code].map[mo]]);
+            }
+            if (rows.length >= 6 && rows.some(function (x) { return x[1] > 0; })) {
+              fresh[code] = analyzeMaterialExcelVerified(grouped[code].name, rows);
+            }
+          });
+          var ksFresh = Object.keys(fresh);
+          if (!ksFresh.length) {
+            if (statusEl) { statusEl.style.color = "var(--lumpy)"; statusEl.textContent = "Tidak ada material valid (min. 6 bulan, format YYYY-MM)."; }
+            return;
+          }
+          state.materials = fresh;
+          state.selected = ksFresh[0];
+          state.localPreviewOnly = true;
+          state.page = "overview";
+          render();
+          showToast("Preview lokal memuat " + ksFresh.length + " material (tidak disimpan ke Firebase).");
+        } catch (err) {
+          if (statusEl) { statusEl.style.color = "var(--lumpy)"; statusEl.textContent = "Gagal memproses CSV: " + err.message; }
+        }
+      }
+    });
+  });
+}
+
+/* ============================================================
+   LOGIN GATE — FIREBASE EMAIL/PASSWORD
+   ============================================================ */
+function firebaseLoginErrorMessage(error) {
+  var code = error && error.code ? error.code : "";
+  if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") return "Email atau password salah.";
+  if (code === "auth/invalid-email") return "Format email tidak valid.";
+  if (code === "auth/too-many-requests") return "Terlalu banyak percobaan login. Coba lagi beberapa saat.";
+  if (code === "auth/network-request-failed") return "Koneksi internet bermasalah. Periksa koneksi lalu coba lagi.";
+  if (code === "auth/unauthorized-domain") return "Domain ini belum ditambahkan ke Authorized Domains di Firebase Authentication Console.";
+  if (code === "auth/operation-not-allowed") return "Login Email/Password belum diaktifkan di Firebase Authentication.";
+  return "Login gagal. " + (error && error.message ? error.message : "Terjadi kesalahan Firebase.");
+}
+
+function renderLogin(errorMsg) {
+  var app = document.getElementById("app");
+  app.innerHTML =
+    '<div style="width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:16px;">' +
+      '<div class="card" style="width:100%;max-width:390px;padding:32px 28px;">' +
+        '<div style="text-align:center;margin-bottom:24px;">' +
+          '<div style="font-size:18px;font-weight:800;">Forecast Studio</div>' +
+          '<div style="font-size:12.5px;color:var(--muted);margin-top:4px;">Dashboard Forecasting Material &middot; Multi-Device Firebase Workspace</div>' +
+        '</div>' +
+        '<label class="field-label" for="auth-user">Email</label>' +
+        '<input class="field" id="auth-user" type="email" style="width:100%;margin-bottom:14px;" placeholder="nama@email.com" autocomplete="username">' +
+        '<label class="field-label" for="auth-pass">Password</label>' +
+        '<input class="field" id="auth-pass" type="password" style="width:100%;margin-bottom:6px;" placeholder="Password" autocomplete="current-password">' +
+        (errorMsg ? '<div style="color:var(--lumpy);font-size:12px;margin-top:6px;line-height:1.45;">' + esc(errorMsg) + '</div>' : '') +
+        '<button class="btn" id="auth-submit" style="width:100%;margin-top:16px;">Masuk</button>' +
+        '<div style="font-size:11px;color:var(--faint);margin-top:18px;text-align:center;line-height:1.5;">Setiap akun Firebase memiliki workspace, dataset aktif, dan riwayat forecasting terpisah yang otomatis tersinkron lintas perangkat.</div>' +
+      '</div>' +
+    '</div>';
+
+  var emailEl = document.getElementById("auth-user");
+  var passEl = document.getElementById("auth-pass");
+  var submitEl = document.getElementById("auth-submit");
+
+  async function attempt() {
+    var email = emailEl.value.trim();
+    var password = passEl.value;
+    if (!email || !password) { renderLogin("Email dan password wajib diisi."); return; }
+
+    submitEl.disabled = true;
+    submitEl.textContent = "Memproses...";
+
+    try {
+      var fb = await window.__firebaseReady;
+      if (!fb || !window.firebaseAuth) {
+        var detail = window.firebaseInitError && window.firebaseInitError.message ? " Detail: " + window.firebaseInitError.message : "";
+        renderLogin("Firebase Authentication belum berhasil terhubung." + detail);
+        return;
+      }
+      await window.firebaseSignIn(window.firebaseAuth, email, password);
+    } catch (err) {
+      renderLogin(firebaseLoginErrorMessage(err));
+    }
+  }
+
+  submitEl.addEventListener("click", attempt);
+  passEl.addEventListener("keydown", function (e) { if (e.key === "Enter") attempt(); });
+  emailEl.addEventListener("keydown", function (e) { if (e.key === "Enter") attempt(); });
+}
+
+/* ============================================================
+   BOOT — AUTH STATE LISTENER
+   ============================================================ */
+document.getElementById("app").innerHTML =
+  '<div style="width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--muted);font-size:13px;"><span class="spinner" style="margin-right:10px;"></span>Memeriksa sesi Firebase...</div>';
+
+window.__firebaseReady.then(function (fb) {
+  if (!fb) {
+    var detail = window.firebaseInitError && window.firebaseInitError.message ? " Detail: " + window.firebaseInitError.message : "";
+    renderLogin("Firebase Authentication belum berhasil terhubung." + detail);
+    return;
+  }
+  window.firebaseOnAuthStateChanged(fb.auth, function (user) {
+    window.firebaseCurrentUser = user || null;
+    if (user) {
+      // Pastikan state akun sebelumnya benar-benar bersih sebelum memuat workspace akun baru
+      resetWorkspaceMemory();
+      startWorkspaceSync(user);
+    } else {
+      resetWorkspaceMemory();
+      renderLogin(null);
+    }
+  });
+});
+</script>
+</body>
+</html>

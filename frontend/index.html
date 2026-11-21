@@ -1078,13 +1078,11 @@ function defaultApiBase() {
   var isLocal = cfg.IS_LOCAL !== undefined
     ? cfg.IS_LOCAL
     : (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:");
-  return cfg.API_BASE_URL || (isLocal ? "http://localhost:8000" : "");
+  return cfg.API_BASE_URL || (isLocal ? "http://localhost:8000" : "https://forecast-studio-olive.vercel.app");
 }
 
 (function initApiBase() {
-  var savedOverride = "";
-  try { savedOverride = localStorage.getItem(UI_PREF_API_KEY) || ""; } catch (e) {}
-  bb.base = savedOverride || defaultApiBase();
+  bb.base = defaultApiBase();
 })();
 
 async function getFreshIdToken(forceRefresh) {
@@ -1095,7 +1093,7 @@ async function getFreshIdToken(forceRefresh) {
 
 async function bbFetch(path, opts, isRetry) {
   if (!bb.base) {
-    throw new Error("URL Backend API production belum dikonfigurasi. Atur URL backend (HTTPS) di halaman Data & Upload atau melalui config.js.");
+    throw new Error("Layanan server belum tersedia saat ini. Silakan coba lagi beberapa saat.");
   }
   opts = Object.assign({}, opts || {});
   opts.headers = Object.assign({}, opts.headers || {});
@@ -1108,7 +1106,7 @@ async function bbFetch(path, opts, isRetry) {
   try {
     res = await fetch(url, opts);
   } catch (e) {
-    throw new Error("Tidak dapat terhubung ke backend (" + bb.base + "). Pastikan server Python FastAPI aktif dan CORS mengizinkan domain ini.");
+    throw new Error("Koneksi ke server sedang terganggu. Periksa koneksi internet Anda lalu coba lagi.");
   }
 
   // Jika token kedaluwarsa (401), refresh token Firebase sekali secara otomatis lalu ulangi request
@@ -1128,32 +1126,17 @@ async function bbCheck() {
   if (!bb.base) {
     bb.online = false;
     bb.checked = true;
-    bb.status = "URL Backend API belum diisi. Masukkan URL HTTPS backend Python (mis. Render) lalu klik Cek Koneksi.";
-    bb.color = "var(--medium)";
     bbPaint();
     return;
   }
-  bb.status = "Memeriksa koneksi backend Python (jika server Render baru aktif dari mode sleep, proses pertama dapat memakan 30–50 detik)...";
-  bb.color = "";
+  bb.online = null;
   bbPaint();
   try {
     var r = await bbFetch("/");
     bb.online = !!(r && r.status === "ok");
     bb.info = r;
-    if (bb.online) {
-      var fbNote = r.firestore_ready
-        ? (r.storage_ready ? "Firestore & Storage aktif" : "Firestore aktif (Storage belum dikonfigurasi)")
-        : "PERINGATAN: Firestore belum dikonfigurasi di backend";
-      bb.status = "Backend terhubung (v" + r.version + " · formula " + (r.formula_version || "excel-verified-v1") + " · " + fbNote + ").";
-      bb.color = r.firestore_ready ? "var(--smooth)" : "var(--medium)";
-    } else {
-      bb.status = "Respons backend tidak dikenali.";
-      bb.color = "var(--lumpy)";
-    }
   } catch (e) {
     bb.online = false;
-    bb.status = e.message;
-    bb.color = "var(--lumpy)";
   }
   bb.checked = true;
   bbPaint();
@@ -1178,7 +1161,7 @@ async function bbUploadAndValidate(file) {
   bb.report = null;
   bb.prog = null;
   bb.color = "";
-  bb.status = "Mengunggah & memvalidasi struktur file " + file.name + " di backend Python...";
+  bb.status = "Mengunggah & memvalidasi struktur file " + file.name + "...";
   bbPaint();
 
   try {
@@ -1211,8 +1194,8 @@ async function bbStartForecasting() {
   bb.busy = true;
   bb.color = "";
   state.lastSelfActivatedDatasetId = bb.pendingUpload.dataset_id;
-  bb.status = "Menjalankan klasifikasi ADI/CV², grid search α/β & forecasting di backend Python...";
-  bb.prog = { done: 0, total: bb.pendingUpload.report.n_materials || 0, percent: 10, stage: "Memproses di backend Python...", status: "forecasting", current: null };
+  bb.status = "Menjalankan klasifikasi ADI/CV², grid search α/β & forecasting...";
+  bb.prog = { done: 0, total: bb.pendingUpload.report.n_materials || 0, percent: 10, stage: "Memproses forecasting...", status: "forecasting", current: null };
   bbPaint();
 
   try {
@@ -1309,13 +1292,29 @@ async function bbStartForecasting() {
 }
 
 function bbPaint() {
-  var dot = document.getElementById("bb-dot");
-  if (dot) {
-    dot.style.background = bb.online === true ? "var(--smooth)" : bb.online === false ? "var(--lumpy)" : "var(--muted)";
-    dot.title = bb.online === true ? "Backend terhubung" : bb.online === false ? "Backend tidak terhubung" : "Belum dicek";
+  var pill = document.getElementById("bb-conn-pill");
+  if (pill) {
+    if (bb.online === true) {
+      pill.className = "badge badge-active";
+      pill.innerHTML = '<span class="badge-dot" style="background:var(--smooth);"></span>Terkoneksi';
+    } else if (bb.online === false) {
+      pill.className = "badge badge-error";
+      pill.innerHTML = '<span class="badge-dot" style="background:var(--lumpy);"></span>Terputus';
+    } else {
+      pill.className = "badge badge-history";
+      pill.innerHTML = '<span class="badge-dot" style="background:var(--muted);"></span>Menghubungkan...';
+    }
+  }
+  var retryWrap = document.getElementById("bb-check");
+  if (retryWrap) {
+    retryWrap.style.display = bb.online === false ? "inline-flex" : "none";
   }
   var st = document.getElementById("bb-status");
-  if (st) { st.textContent = bb.status; st.style.color = bb.color || "var(--muted)"; }
+  if (st) {
+    st.textContent = bb.status || "";
+    st.style.color = bb.color || "var(--muted)";
+    st.style.display = bb.status ? "block" : "none";
+  }
 
   var pr = document.getElementById("bb-progress");
   if (pr) {
@@ -1433,7 +1432,7 @@ function pctFmt(v) { return v === null || v === undefined || isNaN(v) ? "n/a" : 
 function spanText(N) { var y = Math.floor(N / 12), mo = N % 12; return y + " tahun" + (mo ? " " + mo + " bulan" : "") + " (" + N + " bulan)"; }
 
 var T_STAT = "Statistical Forecast: hasil proyeksi berdasarkan pola demand historis menggunakan metode intermittent-demand forecasting (Croston/SBA/TSB) terverifikasi Excel.";
-var T_EXCEL = "Baseline awal diambil dari file Excel 8 material uji. Dataset baru dihitung di backend Python menggunakan rumus Excel terverifikasi yang sama persis dan disimpan permanen di Firebase.";
+var T_EXCEL = "Baseline awal diambil dari file Excel 8 material uji. Dataset baru dihitung otomatis menggunakan rumus Excel terverifikasi dan disimpan permanen di akun Anda.";
 
 function materialSelector() {
   var allCodes = codes();
@@ -1456,31 +1455,64 @@ function statTableFor(code) {
 
 function allForecastTable() {
   var q = state.searchQuery.trim().toLowerCase();
-  var rows = [];
+  var summaryRows = [];
+  var detailRows = [];
+
   codes().forEach(function (c) {
     var m = state.materials[c];
     if (q && c.toLowerCase().indexOf(q) < 0 && String(m.name || "").toLowerCase().indexOf(q) < 0) return;
-    (m.predictions || []).forEach(function (p) {
-      rows.push(tr([
+
+    var preds = m.predictions || [];
+    var nextMo = m.nextMonth || (preds.length ? preds[0][0] : null);
+    var nextQty = m.nextQty !== undefined && m.nextQty !== null ? m.nextQty : (preds.length ? preds[0][1] : null);
+    var cv = classColorVar(m.classification);
+    var isSel = c === state.selected;
+
+    summaryRows.push(
+      '<tr class="clickable" data-action="select-forecast" data-code="' + esc(c) + '"' + (isSel ? ' style="background:var(--accent-dim);"' : '') + '>' +
+        '<td class="mono" style="font-weight:600;">' + esc(c) + '</td>' +
+        '<td>' + esc(m.name) + '</td>' +
+        '<td style="font-weight:600;">' + esc(m.bestMethod) + '</td>' +
+        '<td>' + (nextMo ? fmtMonth(nextMo) : '-') + '</td>' +
+        '<td class="mono" style="font-weight:600;">' + fmtNum(nextQty, 4) + '</td>' +
+        '<td class="mono">' + (m.interval ? fmtNum(m.interval, 2) + ' bln' : '-') + '</td>' +
+        '<td class="mono">' + preds.length + ' kejadian</td>' +
+        '<td class="mono">' + fmtNum(m.metrics[m.bestMethod].mase, 4) + '</td>' +
+        '<td class="mono">' + fmtNum(m.adi, 2) + '</td>' +
+        '<td class="mono">' + fmtNum(m.cv2, 3) + '</td>' +
+        '<td><span class="badge" style="background:var(--' + cv + '-dim);color:var(--' + cv + ');"><span class="badge-dot" style="background:var(--' + cv + ');"></span>' + esc(m.classification) + '</span></td>' +
+      '</tr>'
+    );
+
+    preds.forEach(function (p) {
+      detailRows.push(tr([
         '<span class="mono">' + esc(c) + '</span>',
         esc(m.name),
         fmtMonth(p[0]),
         '<span class="mono" style="font-weight:600;">' + fmtNum(p[1], 4) + '</span>',
-        esc(m.bestMethod),
-        fmtNum(m.metrics[m.bestMethod].mase, 4),
-        fmtNum(m.adi, 2),
-        fmtNum(m.cv2, 3),
-        esc(m.classification)
+        esc(m.bestMethod)
       ]));
     });
   });
-  if (!rows.length) return emptyBox("Tidak ada kejadian forecast yang cocok", "");
-  var truncated = rows.length > 500;
-  var shown = truncated ? rows.slice(0, 500) : rows;
-  return (truncated ? '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Menampilkan 500 dari ' + rows.length + ' kejadian forecast. Gunakan kotak pencarian di atas untuk menyaring material.</div>' : '') +
-    '<div style="max-height:440px;overflow:auto;border-radius:10px;">' +
-      tbl(["Stock Code", "Material", "Forecast Month", "Forecast Qty", "Best Method", "MASE", "ADI", "CV&sup2;", "Classification"], shown) +
-    '</div>';
+
+  if (!summaryRows.length) return emptyBox("Tidak ada material yang cocok dengan pencarian", "");
+
+  var summaryHtml =
+    '<div style="max-height:460px;overflow:auto;border-radius:10px;">' +
+      tbl(["Stock Code", "Material", "Best Method", "Prediksi Berikutnya", "Qty / Kejadian", "Interval", "Total Kejadian", "MASE", "ADI", "CV&sup2;", "Classification"], summaryRows) +
+    '</div>' +
+    '<div style="font-size:11.5px;color:var(--faint);margin-top:8px;">Menampilkan <strong>' + summaryRows.length + ' material unik</strong> (1 baris per material). Klik baris mana saja untuk melihat grafik &amp; jadwal lengkap bulanannya di atas.</div>';
+
+  var detailHtml = detailRows.length
+    ? '<details class="card" style="margin-top:12px;">' +
+        '<summary style="font-weight:600;font-size:13px;cursor:pointer;color:var(--muted);">Lihat rincian jadwal semua kejadian per bulan (' + detailRows.length + ' kejadian)</summary>' +
+        '<div style="margin-top:12px;max-height:360px;overflow:auto;border-radius:8px;">' +
+          tbl(["Stock Code", "Material", "Bulan Prediksi", "Forecast Qty", "Method"], detailRows.slice(0, 500)) +
+        '</div>' +
+      '</details>'
+    : '';
+
+  return summaryHtml + detailHtml;
 }
 
 /* ============================================================
@@ -1637,10 +1669,10 @@ function auditGridCard(m) {
   var rows = [["Croston", "&alpha;", m.alphaC, "croston"], ["SBA", "&alpha;", m.alphaS, "sba"], ["TSB", "&beta;", m.betaT, "tsb"]];
   var bk = m.backend && m.backend.gridSearch;
   var src = m.source === "excel"
-    ? 'Sumber: <strong>Baseline Excel</strong> (nilai parameter dan MSE terverifikasi identik dengan engine backend Python)'
+    ? 'Sumber: <strong>Baseline Excel</strong> (nilai parameter dan MSE terverifikasi identik dengan sistem)'
     : m.source === "backend_python"
-      ? 'Sumber: <strong>Backend Python FastAPI</strong> (formula excel-verified-v1, tersimpan di Firebase Firestore)'
-      : 'Sumber: <strong>Engine JavaScript lokal</strong> (preview sementara)';
+      ? 'Sumber: <strong>Server Forecasting</strong> (formula terverifikasi Excel, tersimpan permanen di akun Anda)'
+      : 'Sumber: <strong>Preview lokal</strong> (sementara)';
 
   return '<div class="section"><details class="card" style="cursor:pointer;"><summary style="font-weight:700;font-size:13.5px;">Detail Grid Search (dapat diaudit)</summary>' +
     '<div style="font-size:12px;color:var(--muted);margin:10px 0;">' + src + ' &middot; 10.000 kandidat per metode (0,0001&ndash;1,0000) &middot; tie &rarr; nilai terkecil pertama.</div>' +
@@ -1886,7 +1918,7 @@ function renderForecast() {
         : emptyBox("Tidak ada kejadian demand diprediksi pada horizon ini", "")) +
       '</div>' +
       sec("Tabel Statistical Forecast", "Material terpilih: " + esc(state.selected) + " &mdash; metode " + esc(m.bestMethod), statTableFor(state.selected), T_STAT) +
-      sec("Forecast Semua Material (" + codes().length + " material)", "Stock code, bulan, qty, metode terbaik, MASE, ADI, CV&sup2;, klasifikasi.",
+      sec("Ringkasan Forecast Semua Material (" + codes().length + " material)", "1 baris per material (klik baris untuk menampilkan grafik & jadwal bulanannya di atas).",
         '<div style="margin-bottom:10px;"><input class="field" id="fc-search" type="search" placeholder="Cari kode atau nama material..." value="' + esc(state.searchQuery) + '" style="width:260px;"></div>' + allForecastTable()) +
     '</div>'
   );
@@ -1896,31 +1928,23 @@ function renderForecast() {
    RENDER: UPLOAD & PROSES (DYNAMIC EXCEL/CSV -> BACKEND -> FIREBASE)
    ============================================================ */
 function renderData() {
-  var cfg = window.APP_CONFIG || {};
   return (
-    '<div class="topbar"><div><div class="topbar-title">Upload &amp; Proses Forecasting</div><div class="topbar-sub">Unggah file Excel (.xlsx, .xlsm) atau CSV untuk analisis dinamis di backend Python &amp; penyimpanan permanen ke Firebase</div></div></div>' +
+    '<div class="topbar">' +
+      '<div><div class="topbar-title">Upload &amp; Proses Forecasting</div><div class="topbar-sub">Unggah file Excel (.xlsx, .xlsm) atau CSV untuk analisis forecasting dinamis &amp; penyimpanan permanen ke akun Anda</div></div>' +
+      '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<span id="bb-conn-pill" class="badge badge-history"><span class="badge-dot" style="background:var(--muted);"></span>Menghubungkan...</span>' +
+        '<button class="btn-ghost btn-sm" id="bb-check" style="display:none;">Coba Hubungkan Ulang</button>' +
+      '</div>' +
+    '</div>' +
     '<div class="content">' +
       '<div class="section">' +
         '<div class="callout">' +
           '<span>&#9432;</span>' +
-          '<span><strong>Alur Permanen Berbasis Akun Firebase:</strong> File yang Anda unggah akan divalidasi oleh backend Python FastAPI (mendeteksi jumlah material secara otomatis: 8, 20, 50, 100+), file asli diarsipkan ke Firebase Storage, seluruh perhitungan ADI/CV&sup2;, grid search 0,0001, Croston/SBA/TSB, dan evaluasi tanpa data leakage dijalankan secara asinkron, lalu disimpan permanen ke Firestore di bawah UID akun Anda dan disinkronkan otomatis lintas perangkat.</span>' +
+          '<span><strong>Workspace Permanen &amp; Sinkron Lintas Perangkat:</strong> File yang Anda unggah akan divalidasi secara otomatis (mendukung jumlah material dinamis: 8, 20, 50, 100+), dihitung menggunakan metode ADI/CV&sup2;, grid search 0,0001, Croston/SBA/TSB, serta evaluasi tanpa data leakage, lalu disimpan permanen ke akun Anda dan tersinkron otomatis di perangkat lain.</span>' +
         '</div>' +
       '</div>' +
       '<div class="section">' +
-        '<div class="section-head"><div class="section-title">1. Koneksi Backend Python FastAPI</div><div class="section-desc">Environment: <strong class="mono">' + esc(cfg.ENVIRONMENT || "development") + '</strong> &middot; Komunikasi menggunakan HTTPS &amp; Firebase ID Token.</div></div>' +
-        '<div class="card">' +
-          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-            '<span id="bb-dot" style="width:10px;height:10px;border-radius:50%;background:var(--muted);display:inline-block;"></span>' +
-            '<input id="bb-url" class="field mono" style="flex:1;min-width:240px;" value="' + esc(bb.base) + '" placeholder="https://forecast-studio-api.onrender.com" aria-label="URL Backend API">' +
-            '<button class="btn-ghost" id="bb-check">Cek Koneksi</button>' +
-            '<button class="btn-ghost" id="bb-reset-url" title="Kembali ke URL bawaan config.js">Reset Default</button>' +
-          '</div>' +
-          '<div id="bb-status" style="margin-top:10px;font-size:12.5px;color:var(--muted);"></div>' +
-          '<div id="bb-progress" style="margin-top:10px;display:none;"></div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="section">' +
-        '<div class="section-head"><div class="section-title">2. Unggah &amp; Validasi File Excel / CSV</div><div class="section-desc">Kolom yang dikenali otomatis: <span class="mono">kode / stock_code</span>, <span class="mono">nama / material</span>, <span class="mono">bulan / periode (YYYY-MM / tanggal Excel)</span>, <span class="mono">qty / demand / iss</span>. Setiap upload membuat record dataset baru dan tidak menimpa history sebelumnya.</div></div>' +
+        '<div class="section-head"><div class="section-title">Unggah &amp; Validasi File Excel / CSV</div><div class="section-desc">Kolom yang dikenali otomatis: <span class="mono">kode / stock_code</span>, <span class="mono">nama / material</span>, <span class="mono">bulan / periode (YYYY-MM / tanggal Excel)</span>, <span class="mono">qty / demand / iss</span>. Setiap upload membuat record dataset baru tanpa menimpa history sebelumnya.</div></div>' +
         '<div class="card">' +
           '<div class="upload-zone" id="bb-dropzone">' +
             '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">Tarik file Excel (.xlsx, .xlsm) atau CSV ke sini, atau</div>' +
@@ -1928,14 +1952,16 @@ function renderData() {
             '<input type="file" id="bb-file" accept=".xlsx,.xlsm,.csv" style="display:none;">' +
             '<div style="font-size:11.5px;color:var(--faint);margin-top:10px;">File asli tidak akan diubah. Ringkasan validasi akan ditampilkan sebelum proses forecasting dijalankan.</div>' +
           '</div>' +
+          '<div id="bb-status" style="margin-top:12px;font-size:12.5px;color:var(--muted);display:none;"></div>' +
+          '<div id="bb-progress" style="margin-top:10px;display:none;"></div>' +
           '<div id="bb-report"></div>' +
         '</div>' +
       '</div>' +
       '<div class="section">' +
         '<details class="card">' +
-          '<summary style="font-weight:600;font-size:13px;cursor:pointer;color:var(--muted);">Mode Preview Offline CSV (tanpa backend &amp; tidak disimpan ke Firebase)</summary>' +
+          '<summary style="font-weight:600;font-size:13px;cursor:pointer;color:var(--muted);">Mode Preview Offline CSV (sementara, tidak disimpan ke akun)</summary>' +
           '<div style="margin-top:12px;">' +
-            '<div class="callout warn" style="margin-bottom:12px;"><span>&#9888;</span><span>Opsi ini hanya untuk inspeksi lokal sementara bila backend sedang tidak tersedia. Hasil preview lokal <strong>tidak disimpan ke Firebase</strong> dan akan kembali ke dataset aktif saat halaman dimuat ulang.</span></div>' +
+            '<div class="callout warn" style="margin-bottom:12px;"><span>&#9888;</span><span>Opsi ini hanya untuk inspeksi lokal sementara bila sedang offline. Hasil preview lokal <strong>tidak disimpan ke akun</strong> dan akan kembali ke dataset aktif saat halaman dimuat ulang.</span></div>' +
             '<button class="btn-ghost btn-sm" data-action="browse-csv">Pilih CSV untuk Preview Lokal</button>' +
             '<input type="file" id="csv-input" accept=".csv" style="display:none;">' +
             '<div id="upload-status" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>' +
@@ -2104,7 +2130,7 @@ function renderAudit() {
   integ.push(tr(["Firebase Authentication UID", esc(state.user ? state.user.uid : "-"), okTag(!!state.user)]));
   integ.push(tr(["Sinkronisasi Real-Time Firestore (onSnapshot)", state.syncLive ? "Aktif — perubahan lintas perangkat terdeteksi otomatis" : "Tidak aktif", okTag(state.syncLive)]));
   integ.push(tr(["Dataset Aktif Saat Ini", esc(activeDatasetLabel()) + " (" + allCodes.length + " material)", okTag(!state.localPreviewOnly)]));
-  integ.push(tr(["Status Backend Python FastAPI", bb.online ? "Terhubung (" + esc(bb.base) + ")" : "Belum terhubung / belum dicek", okTag(!!bb.online)]));
+  integ.push(tr(["Status Koneksi Layanan Forecasting", bb.online ? "Terkoneksi" : "Belum terhubung / belum dicek", okTag(!!bb.online)]));
 
   var head = ["Kode", "Bulan", "Gap", "Bln=0", "Demand>0", "ADI", "CV&sup2;", "Klasifikasi", "&alpha; Croston", "&alpha; SBA", "&beta; TSB", "MSE", "MAD", "MASE", "RMSSE", "Evaluasi (>60 / &le;60)", "Terbaik", "Horizon", "Tanggal Forecast", "Prediksi"];
 
@@ -2185,6 +2211,14 @@ function attachEvents() {
   });
   app.querySelectorAll('[data-action="select-detail"]').forEach(function (el) {
     el.addEventListener("click", function () { state.selected = el.getAttribute("data-code"); state.page = "material"; render(); });
+  });
+  app.querySelectorAll('[data-action="select-forecast"]').forEach(function (el) {
+    el.addEventListener("click", function () {
+      state.selected = el.getAttribute("data-code");
+      render();
+      var mainEl = document.querySelector(".main");
+      if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
+    });
   });
 
   var sel = app.querySelector('[data-action="change-material"]');
@@ -2269,26 +2303,11 @@ function bindBackend() {
   var checkBtn = document.getElementById("bb-check");
   if (checkBtn) {
     checkBtn.addEventListener("click", function () {
-      var urlEl = document.getElementById("bb-url");
-      bb.base = (urlEl ? urlEl.value.trim() : "").replace(/\/+$/, "");
-      try {
-        if (bb.base) localStorage.setItem(UI_PREF_API_KEY, bb.base);
-        else localStorage.removeItem(UI_PREF_API_KEY);
-      } catch (e) {}
-      bbCheck();
-    });
-  }
-  var resetUrlBtn = document.getElementById("bb-reset-url");
-  if (resetUrlBtn) {
-    resetUrlBtn.addEventListener("click", function () {
-      try { localStorage.removeItem(UI_PREF_API_KEY); } catch (e) {}
       bb.base = defaultApiBase();
-      var urlEl = document.getElementById("bb-url");
-      if (urlEl) urlEl.value = bb.base;
       bbCheck();
     });
   }
-  if (document.getElementById("bb-status")) {
+  if (document.getElementById("bb-conn-pill")) {
     bbPaint();
     if (!bb.checked && !bb.busy) bbCheck();
   }

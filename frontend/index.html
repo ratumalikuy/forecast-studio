@@ -1211,8 +1211,8 @@ async function bbStartForecasting() {
   bb.busy = true;
   bb.color = "";
   state.lastSelfActivatedDatasetId = bb.pendingUpload.dataset_id;
-  bb.status = "Mengirim job forecasting ke backend Python...";
-  bb.prog = { done: 0, total: bb.pendingUpload.report.n_materials || 0, percent: 0, stage: "Mengirim antrean...", status: "queued", current: null };
+  bb.status = "Menjalankan klasifikasi ADI/CV², grid search α/β & forecasting di backend Python...";
+  bb.prog = { done: 0, total: bb.pendingUpload.report.n_materials || 0, percent: 10, stage: "Memproses di backend Python...", status: "forecasting", current: null };
   bbPaint();
 
   try {
@@ -1227,6 +1227,7 @@ async function bbStartForecasting() {
     });
 
     var t0 = Date.now();
+    var st = job;
     for (;;) {
       // Hentikan polling jika pengguna logout atau ganti akun di tengah jalan
       if (!state.user || state.user.uid !== uidAtStart) {
@@ -1234,7 +1235,9 @@ async function bbStartForecasting() {
         return;
       }
 
-      var st = await bbFetch("/jobs/" + encodeURIComponent(job.job_id));
+      if (!st || (st.status !== "done" && st.status !== "error")) {
+        st = await bbFetch("/jobs/" + encodeURIComponent(job.job_id));
+      }
       bb.prog = {
         done: st.done || 0,
         total: st.total || 0,
@@ -1288,6 +1291,7 @@ async function bbStartForecasting() {
         throw new Error("Proses melebihi batas waktu 30 menit.");
       }
 
+      st = null;
       await new Promise(function (resolve) {
         bb.pollTimer = setTimeout(resolve, 450);
       });

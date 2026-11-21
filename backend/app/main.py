@@ -138,7 +138,7 @@ async def upload_file(
     if storage_warning:
         parsed.report["warnings"].append(storage_warning)
 
-    # Create initial Firestore dataset record (does NOT overwrite activeDatasetId!)
+    # Create initial Firestore dataset record + stage parsed series for serverless /analyze
     if firebase_store.firestore_ready:
         try:
             firebase_store.create_dataset_record(
@@ -152,6 +152,7 @@ async def upload_file(
                 storage_path=storage_path,
                 validation_report=parsed.report,
             )
+            firebase_store.save_staged_upload(user.uid, dataset_id, parsed.materials)
         except Exception as exc:
             logger.exception("Gagal menyimpan metadata awal dataset di Firestore: %s", exc)
             raise HTTPException(

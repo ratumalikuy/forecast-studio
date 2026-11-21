@@ -387,6 +387,84 @@ class FirebaseStore:
             }
         )
 
+    def save_staged_upload(
+        self,
+        uid: str,
+        dataset_id: str,
+        materials: Dict[str, Dict[str, Any]],
+    ) -> None:
+        """Persist parsed input series temporarily in Firestore staging subcollection
+        so stateless serverless platforms (e.g., Vercel) can run /analyze across instances."""
+        if not self.firestore_ready:
+            return
+        staging_col = self._dataset_ref(uid, dataset_id).collection("staging")
+        items = list(materials.items())
+        chunk_size = 80
+        for chunk_idx, start in enumerate(range(0, len(items), chunk_size)):
+            chunk_payload: Dict[str, Any] = {}
+            for code, entry in items[start : start + chunk_size]:
+                chunk_payload[code] = {
+                    "name": entry["name"],
+                    "series": [f"{m}|{v}" for m, v in entry["series"]],
+                }
+            staging_col.document(f"chunk_{chunk_idx:04d}").set({"materials": chunk_payload})
+
+    def load_staged_upload(
+        self,
+        uid: str,
+        dataset_id: str,
+    ) -> Optional[Dict[str, Dict[str, Any]]]:
+        """Load staged parsed input series from Firestore."""
+        if not self.firestore_ready:
+            return None
+        ds_snap = self._dataset_ref(uid, dataset_id).get()
+        if not ds_snap.exists:
+            return None
+        ds_data = ds_snap.to_dict() or {}
+        if ds_data.get("uid") != uid:
+            raise PermissionError("Anda tidak memiliki izin mengakses upload ini.")
+
+        snaps = list(self._dataset_ref(uid, dataset_id).collection("staging").stream())
+        if not snaps:
+            return None
+        materials: Dict[str, Dict[str, Any]] = {}
+        for s in snaps:
+            data = s.to_dict() or {}
+            for code, entry in (data.get("materials") or {}).items():
+                series = []
+                for pair_str in entry.get("series") or []:
+                    if isinstance(pair_str, str) and "|" in pair_str:
+                        mo, qty = pair_str.split("|", 1)
+                        series.append((mo, float(qty)))
+                materials[code] = {"name": entry.get("name", code), "series": series}
+        return materials if materials else None
+
+    def delete_staged_upload(self, uid: str, dataset_id: str) -> None:
+        """Remove temporary staging documents after forecasting completes."""
+        if not self.firestore_ready:
+            return
+        try:
+            docs = list(self._dataset_ref(uid, dataset_id).collection("staging").stream())
+            for start in range(0, len(docs), 350):
+                batch = self._db.batch()
+                for d in docs[start : start + 350]:
+                    batch.delete(d.reference)
+                batch.commit()
+        except Exception as exc:
+            logger.warning("Gagal membersihkan staging %s: %s", dataset_id, exc)
+
+    def get_dataset_status(self, uid: str, dataset_id: str) -> Optional[Dict[str, Any]]:
+        """Read dataset processing status from Firestore (serverless fallback for /jobs/{id})."""
+        if not self.firestore_ready:
+            return None
+        snap = self._dataset_ref(uid, dataset_id).get()
+        if not snap.exists:
+            return None
+        d = snap.to_dict() or {}
+        if d.get("uid") != uid:
+            raise PermissionError("Anda tidak memiliki izin melihat status job ini.")
+        return d
+
     def mark_dataset_processing(self, uid: str, dataset_id: str) -> None:
         if not self.firestore_ready:
             return

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+import os
 import threading
 import time
 import uuid
@@ -17,6 +18,7 @@ from .forecasting import analyze_material
 from .parser import ParsedUpload
 
 logger = logging.getLogger(__name__)
+IS_SERVERLESS = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
 
 
 @dataclass
@@ -104,8 +106,9 @@ class JobManager:
         file_size_bytes: int,
         dataset_id: Optional[str] = None,
     ) -> UploadEntry:
-        upload_id = uuid.uuid4().hex
         ds_id = dataset_id or f"ds_{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        # Use dataset_id as upload_id so stateless serverless instances can recover staged uploads from Firestore
+        upload_id = ds_id
         entry = UploadEntry(
             upload_id=upload_id,
             dataset_id=ds_id,
@@ -154,18 +157,34 @@ class JobManager:
         with self._lock:
             self._prune_old_jobs_locked()
             entry = self._uploads.get(upload_id)
-            if not entry:
-                raise KeyError("Upload ID tidak ditemukan atau sudah kedaluwarsa. Silakan unggah ulang file.")
-            if entry.uid != uid:
-                raise PermissionError("Anda tidak memiliki izin mengakses upload ini.")
 
+        # Serverless recovery: if /upload landed on another instance, load staged materials from Firestore
+        if entry is None and firebase_store.firestore_ready:
+            staged = firebase_store.load_staged_upload(uid, upload_id)
+            if staged:
+                entry = UploadEntry(
+                    upload_id=upload_id,
+                    dataset_id=upload_id,
+                    uid=uid,
+                    email=None,
+                    parsed=ParsedUpload(filename="", file_ext="", materials=staged, report={}),
+                    storage_path=None,
+                    file_size_bytes=0,
+                )
+
+        if entry is None:
+            raise KeyError("Upload ID tidak ditemukan atau sudah kedaluwarsa. Silakan unggah ulang file.")
+        if entry.uid != uid:
+            raise PermissionError("Anda tidak memiliki izin mengakses upload ini.")
+
+        with self._lock:
             # Idempotency guard: prevent duplicate concurrent jobs for the same upload_id
             if entry.active_job_id and entry.active_job_id in self._jobs:
                 existing = self._jobs[entry.active_job_id]
                 if existing.status in ("queued", "forecasting", "saving", "done"):
                     return existing
 
-            job_id = uuid.uuid4().hex
+            job_id = entry.dataset_id if IS_SERVERLESS else uuid.uuid4().hex
             total = len(entry.parsed.materials)
             job = JobState(
                 job_id=job_id,
@@ -190,17 +209,45 @@ class JobManager:
             except Exception as exc:
                 logger.warning("Gagal memperbarui nama dataset di Firestore: %s", exc)
 
-        self._executor.submit(self._run_job, job, entry, activate_on_complete)
+        if IS_SERVERLESS:
+            # On Vercel Serverless (Fluid Compute up to 300s), run inline so the runtime
+            # does not freeze a background thread before Firestore writes complete.
+            self._run_job(job, entry, activate_on_complete)
+        else:
+            self._executor.submit(self._run_job, job, entry, activate_on_complete)
         return job
 
     def get_job(self, job_id: str, uid: str) -> JobState:
         with self._lock:
             job = self._jobs.get(job_id)
-        if not job:
-            raise KeyError("Job ID tidak ditemukan.")
-        if job.uid != uid:
-            raise PermissionError("Anda tidak memiliki izin melihat status job ini.")
-        return job
+        if job:
+            if job.uid != uid:
+                raise PermissionError("Anda tidak memiliki izin melihat status job ini.")
+            return job
+
+        # Serverless fallback: check Firestore dataset status
+        if firebase_store.firestore_ready:
+            ds = firebase_store.get_dataset_status(uid, job_id)
+            if ds:
+                st_raw = ds.get("status", "processing")
+                mapped = "done" if st_raw == "completed" else ("error" if st_raw == "failed" else "forecasting")
+                total = int(ds.get("materialCount", 0) or 0)
+                return JobState(
+                    job_id=job_id,
+                    upload_id=job_id,
+                    dataset_id=job_id,
+                    uid=uid,
+                    status=mapped,
+                    stage="Selesai — tersimpan permanen ke Firebase." if mapped == "done" else (ds.get("errorMessage") or "Memproses..."),
+                    done=total if mapped == "done" else 0,
+                    total=total,
+                    saved_to_firebase=(mapped == "done"),
+                    activated=(mapped == "done"),
+                    error=ds.get("errorMessage"),
+                    summary=ds.get("summaryResults"),
+                )
+
+        raise KeyError("Job ID tidak ditemukan.")
 
     def get_latest_results(self, uid: str) -> Optional[Dict[str, Any]]:
         with self._lock:
@@ -245,6 +292,7 @@ class JobManager:
                     analyzed_items=analyzed,
                     activate=activate_on_complete,
                 )
+                firebase_store.delete_staged_upload(uid, dataset_id)
             else:
                 summary = build_summary_results(analyzed)
                 if settings.is_production:

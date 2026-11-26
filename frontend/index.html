@@ -369,6 +369,13 @@
   }
   .btn-danger-solid:hover:not(:disabled) { background: #A82828; border-color: #A82828; }
 
+  .signal-dot {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    background: var(--faint); box-shadow: 0 0 0 3px rgba(138, 148, 166, 0.18);
+  }
+  .signal-dot.online { background: var(--smooth); box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.18); }
+  .signal-dot.offline { background: var(--lumpy); box-shadow: 0 0 0 3px rgba(200, 50, 50, 0.18); }
+
   /* ===== Interactive Chart Tooltip & Sortable Headers ===== */
   .chart-tooltip {
     position: fixed; pointer-events: none; z-index: 80;
@@ -1594,14 +1601,20 @@ function bbPaint() {
   var pill = document.getElementById("bb-conn-pill");
   if (pill) {
     if (bb.online === true) {
-      pill.className = "tag tag-muted";
-      pill.innerHTML = '<span class="tag-dot" style="background:var(--smooth);"></span>Service Online';
+      pill.className = "signal-dot online";
+      pill.innerHTML = "";
+      pill.setAttribute("title", "Online");
+      pill.setAttribute("aria-label", "Online");
     } else if (bb.online === false) {
-      pill.className = "tag tag-error";
-      pill.innerHTML = '<span class="tag-dot" style="background:var(--lumpy);"></span>Service Unavailable';
+      pill.className = "signal-dot offline";
+      pill.innerHTML = "";
+      pill.setAttribute("title", "Offline");
+      pill.setAttribute("aria-label", "Offline");
     } else {
-      pill.className = "tag tag-muted";
-      pill.innerHTML = '<span class="tag-dot" style="background:var(--faint);"></span>Checking Service...';
+      pill.className = "signal-dot";
+      pill.innerHTML = "";
+      pill.setAttribute("title", "Connecting");
+      pill.setAttribute("aria-label", "Connecting");
     }
   }
   var retryWrap = document.getElementById("bb-check");
@@ -2657,8 +2670,8 @@ function renderDataManagement() {
         '<div class="topbar-title">Data Management</div>' +
         '<div class="topbar-sub">Unggah dataset, kelola riwayat akun, dan tinjau struktur data sumber</div>' +
       '</div>' +
-      '<div style="display:flex;align-items:center;gap:8px;">' +
-        '<span id="bb-conn-pill" class="tag tag-muted"><span class="tag-dot" style="background:var(--faint);"></span>Checking Service...</span>' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<span id="bb-conn-pill" class="signal-dot" role="status" aria-label="Connecting" title="Connecting"></span>' +
         '<button class="btn-ghost btn-sm" id="bb-check" style="display:none;">Reconnect</button>' +
       '</div>' +
     '</div>' +

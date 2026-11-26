@@ -1,7 +1,7 @@
 /* ============================================================
    Konfigurasi Environment Frontend (Development vs Production)
    - Di localhost / 127.0.0.1 otomatis memakai DEV_API_BASE_URL.
-   - Di production (GitHub Pages / Vercel / Custom Domain) otomatis
+   - Di production (Vercel / GitHub Pages / Custom Domain) otomatis
      memakai PRODUCTION_API_BASE_URL (tersembunyi dari tampilan user).
    - Tidak ada private key atau secret backend di file ini.
    ============================================================ */
@@ -28,6 +28,16 @@
     PRODUCTION_API_BASE_URL: prodUrl,
     API_BASE_URL: isLocal ? devUrl : prodUrl,
     FIREBASE_SDK_VERSION: "12.19.0",
+    // Konfigurasi keamanan sesi (dapat disesuaikan)
+    SESSION: {
+      // "SESSION" = browserSessionPersistence (wajib login ulang saat tab/browser ditutup; refresh tab aktif tetap masuk)
+      // "NONE"    = inMemoryPersistence (lebih ketat: wajib login ulang bahkan saat refresh / browser session restore)
+      PERSISTENCE: "SESSION",
+      // Batas waktu tidak aktif otomatis logout (menit)
+      INACTIVITY_TIMEOUT_MINUTES: 30,
+      // Peringatan sebelum sesi berakhir otomatis (menit)
+      WARNING_BEFORE_MINUTES: 2,
+    },
     FIREBASE: {
       apiKey: "AIzaSyBHHAjOqlzs6SU6EqVuuoViHFgDpLCWA6U",
       authDomain: "dashboard-forecast-demand.firebaseapp.com",

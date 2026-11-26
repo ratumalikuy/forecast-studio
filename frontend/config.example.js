@@ -5,16 +5,14 @@
    JANGAN PERNAH menaruh service account key atau secret di sini!
    ============================================================ */
 window.APP_CONFIG = {
-  // URL Backend FastAPI untuk development lokal
   DEV_API_BASE_URL: "http://localhost:8000",
-
-  // URL Backend FastAPI production (HTTPS, mis. https://forecast-studio-api.onrender.com)
-  PRODUCTION_API_BASE_URL: "https://YOUR-BACKEND-APP.onrender.com",
-
-  // Versi Firebase JS Compat SDK (gstatic CDN)
+  PRODUCTION_API_BASE_URL: "https://YOUR-BACKEND-APP.vercel.app",
   FIREBASE_SDK_VERSION: "12.19.0",
-
-  // Konfigurasi publik Web App Firebase (aman di frontend; keamanan dijaga Firestore & Storage Rules)
+  SESSION: {
+    PERSISTENCE: "SESSION", // "SESSION" (browserSessionPersistence) atau "NONE" (inMemoryPersistence)
+    INACTIVITY_TIMEOUT_MINUTES: 30,
+    WARNING_BEFORE_MINUTES: 2,
+  },
   FIREBASE: {
     apiKey: "YOUR_FIREBASE_WEB_API_KEY",
     authDomain: "YOUR_PROJECT.firebaseapp.com",

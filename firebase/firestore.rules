@@ -32,6 +32,11 @@ service cloud.firestore {
           allow read: if isOwner(uid);
           allow write, delete: if isOwner(uid);
         }
+
+        // Subcollection staging sementara — hanya boleh diakses oleh Backend Admin SDK
+        match /staging/{chunkId} {
+          allow read, write: if false;
+        }
       }
     }
 

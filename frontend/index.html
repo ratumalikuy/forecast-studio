@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Dead Stock Forecast Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -237,6 +240,60 @@
   .tip:hover::after, .tip:focus::after { content: attr(data-tip); position:absolute; left:-10px; top:130%; width:270px; background:var(--text); color:#fff; font-size:11.5px; font-weight:400; line-height:1.5; padding:9px 11px; border-radius:7px; z-index:40; white-space:normal; text-align:left; box-shadow:0 8px 24px rgba(0,0,0,.2); }
   details > summary { outline:none; }
 
+  /* ===== Auth Login Screen & Timeout Modal ===== */
+  .auth-shell {
+    width: 100%; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at top right, #EAEFFD 0%, var(--bg) 52%, #EEF2F8 100%);
+    padding: 20px;
+  }
+  .auth-card {
+    width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: 0 12px 32px rgba(16,24,40,0.08), 0 2px 6px rgba(16,24,40,0.04);
+    padding: 34px 30px 28px;
+  }
+  .auth-brand { text-align: center; margin-bottom: 24px; }
+  .auth-logo {
+    width: 46px; height: 46px; margin: 0 auto 12px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent) 0%, #2B4EC2 100%);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 17px; letter-spacing: -0.5px;
+    box-shadow: 0 6px 16px rgba(62,99,221,0.28);
+  }
+  .auth-title { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; color: var(--text); }
+  .auth-subtitle { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .auth-field-group { margin-bottom: 14px; }
+  .pw-wrap { position: relative; display: flex; align-items: center; }
+  .pw-wrap input.field { width: 100%; padding-right: 42px; }
+  .pw-toggle {
+    position: absolute; right: 8px; background: none; border: none; color: var(--muted);
+    padding: 5px 6px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .pw-toggle:hover { color: var(--text); background: var(--bg); }
+  .auth-alert {
+    padding: 10px 12px; border-radius: 8px; font-size: 12px; line-height: 1.5; margin-bottom: 14px;
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .auth-alert.err { background: var(--lumpy-dim); border: 1px solid #F2B8BA; color: #9F1D22; }
+  .auth-alert.info { background: var(--accent-dim); border: 1px solid #C7D4F9; color: #2B4499; }
+  .auth-alert.warn { background: var(--medium-dim); border: 1px solid #F0D089; color: #7A5100; }
+  .auth-submit {
+    width: 100%; padding: 11px 16px; font-size: 13.5px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .auth-meta {
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border);
+    font-size: 11.5px; color: var(--faint); text-align: center; line-height: 1.55;
+  }
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(16,24,40,0.48); z-index: 90;
+    display: none; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal-box {
+    width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; box-shadow: 0 18px 44px rgba(16,24,40,0.22);
+  }
+
   @media (max-width: 820px) {
     #app { flex-direction: column; }
     .nav { width:100%; border-right:none; border-bottom:1px solid var(--border); }
@@ -254,10 +311,27 @@
 <body>
 <div id="app"></div>
 <div class="toast" id="toast"></div>
+<div class="modal-backdrop" id="session-timeout-modal" role="dialog" aria-modal="true" aria-labelledby="timeout-modal-title">
+  <div class="modal-box">
+    <div id="timeout-modal-title" style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;">Sesi Akan Segera Berakhir</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.55;">
+      Tidak terdeteksi aktivitas pada dashboard. Demi keamanan akun, Anda akan dikeluarkan otomatis dalam
+      <strong class="mono" id="timeout-countdown" style="color:var(--lumpy);">02:00</strong>.
+    </div>
+    <div style="font-size:12px;color:var(--faint);margin-top:8px;">Seluruh dataset dan hasil analisis yang telah tersimpan tetap aman di akun Anda.</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+      <button class="btn-ghost" id="timeout-logout-btn">Keluar Sekarang</button>
+      <button class="btn" id="timeout-extend-btn">Lanjutkan Sesi</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ============================================================
-   FIREBASE — Auth + Cloud Firestore + Firebase Storage
+   FIREBASE — Auth (Session Persistence) + Firestore + Storage
+   - Menerapkan browserSessionPersistence (atau inMemoryPersistence
+     sesuai config.js) SEBELUM auth state & sign-in.
+   - Tidak pernah menggunakan persistent LOCAL storage untuk auth.
    ============================================================ */
 (function () {
   var cfg = window.APP_CONFIG || {};
@@ -301,10 +375,39 @@
       var db = window.firebase.firestore();
       var storage = typeof window.firebase.storage === "function" ? window.firebase.storage() : null;
 
+      // Bersihkan sisa sesi persistent LOCAL lama sebelum Firebase Auth membaca storage,
+      // apabila tab ini belum memiliki penanda sesi aktif per-tab.
+      try {
+        if (!sessionStorage.getItem("ds_auth_session_v2")) {
+          var staleKeys = [];
+          for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && (k.indexOf("firebase:authUser:") === 0 || k.indexOf("firebase:redirectUser:") === 0)) {
+              staleKeys.push(k);
+            }
+          }
+          staleKeys.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+          if (window.indexedDB && typeof window.indexedDB.deleteDatabase === "function") {
+            window.indexedDB.deleteDatabase("firebaseLocalStorageDb");
+          }
+        }
+      } catch (cleanupErr) {}
+
+      // Wajib set persistence SEBELUM proses autentikasi berjalan (session-only, bukan local!)
+      var sessCfg = cfg.SESSION || {};
+      var requestedMode = String(sessCfg.PERSISTENCE || "SESSION").toUpperCase();
+      var persistenceEnum = requestedMode === "NONE"
+        ? window.firebase.auth.Auth.Persistence.NONE
+        : window.firebase.auth.Auth.Persistence.SESSION;
+
+      await auth.setPersistence(persistenceEnum);
+      window.firebaseAuthPersistenceMode = requestedMode === "NONE" ? "NONE" : "SESSION";
+
       window.firebaseAuth = auth;
       window.firebaseDb = db;
       window.firebaseStorage = storage;
-      window.firebaseSignIn = function (authInstance, email, password) {
+      window.firebaseSignIn = async function (authInstance, email, password) {
+        await authInstance.setPersistence(persistenceEnum);
         return authInstance.signInWithEmailAndPassword(email, password);
       };
       window.firebaseSignOut = function (authInstance) {
@@ -661,10 +764,29 @@ function buildExcelMaterial(code) {
    - Sumber kebenaran data: Cloud Firestore (users/{uid}/...)
    - localStorage HANYA dipakai untuk preferensi UI / override URL API dev.
    ============================================================ */
-var UI_PREF_API_KEY = "forecast_ui_api_override";
+var SESSION_MARKER_KEY = "ds_auth_session_v2";
+var LEGACY_LOCAL_KEYS = ["forecast_ui_api_override", "forecast_api_base"];
+var TAB_INSTANCE_ID = "tab_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+
+function getSessionSettings() {
+  var s = (window.APP_CONFIG && window.APP_CONFIG.SESSION) || {};
+  var timeoutMin = Number(s.INACTIVITY_TIMEOUT_MINUTES);
+  if (!isFinite(timeoutMin) || timeoutMin < 1) timeoutMin = 30;
+  var warnMin = Number(s.WARNING_BEFORE_MINUTES);
+  if (!isFinite(warnMin) || warnMin < 0.25) warnMin = 2;
+  var timeoutMs = Math.round(timeoutMin * 60 * 1000);
+  var warnMs = Math.min(Math.round(warnMin * 60 * 1000), Math.floor(timeoutMs / 2));
+  return {
+    persistence: String(s.PERSISTENCE || "SESSION").toUpperCase() === "NONE" ? "NONE" : "SESSION",
+    timeoutMinutes: timeoutMin,
+    timeoutMs: timeoutMs,
+    warningMs: warnMs
+  };
+}
 
 var state = {
   page: "overview",
+  authVerified: false,
   user: null,
   workspaceLoading: false,
   workspaceError: null,
@@ -2131,6 +2253,8 @@ function renderAudit() {
   integ.push(tr(["Sinkronisasi Real-Time Firestore (onSnapshot)", state.syncLive ? "Aktif — perubahan lintas perangkat terdeteksi otomatis" : "Tidak aktif", okTag(state.syncLive)]));
   integ.push(tr(["Dataset Aktif Saat Ini", esc(activeDatasetLabel()) + " (" + allCodes.length + " material)", okTag(!state.localPreviewOnly)]));
   integ.push(tr(["Status Koneksi Layanan Forecasting", bb.online ? "Terkoneksi" : "Belum terhubung / belum dicek", okTag(!!bb.online)]));
+  var sCfg = getSessionSettings();
+  integ.push(tr(["Keamanan Sesi & Timeout", (window.firebaseAuthPersistenceMode === "NONE" ? "inMemoryPersistence" : "browserSessionPersistence (per-tab)") + " · Auto-logout " + sCfg.timeoutMinutes + " menit inaktif", okTag(true)]));
 
   var head = ["Kode", "Bulan", "Gap", "Bln=0", "Demand>0", "ADI", "CV&sup2;", "Klasifikasi", "&alpha; Croston", "&alpha; SBA", "&beta; TSB", "MSE", "MAD", "MASE", "RMSSE", "Evaluasi (>60 / &le;60)", "Terbaik", "Horizon", "Tanggal Forecast", "Prediksi"];
 
@@ -2155,13 +2279,14 @@ function renderAudit() {
    ============================================================ */
 function render() {
   var app = document.getElementById("app");
-  if (!state.user) return;
+  // Authentication guard: jangan pernah menampilkan dashboard sebelum autentikasi terverifikasi
+  if (!state.authVerified || !state.user) return;
 
   var pageHtml = "";
   if (state.workspaceLoading) {
     pageHtml =
-      '<div class="topbar"><div><div class="topbar-title">Memuat Workspace...</div><div class="topbar-sub">Mengambil dataset aktif &amp; riwayat dari Firebase Firestore</div></div></div>' +
-      '<div class="content"><div class="card" style="text-align:center;padding:48px 24px;"><span class="spinner"></span><div style="margin-top:12px;font-weight:600;">Menyinkronkan data akun ' + esc(state.user.email) + '...</div><div style="font-size:12.5px;color:var(--muted);margin-top:4px;">Memeriksa activeDatasetId dan hasil forecasting tersimpan di Firebase.</div></div></div>';
+      '<div class="topbar"><div><div class="topbar-title">Memuat Workspace...</div><div class="topbar-sub">Mengambil dataset aktif &amp; riwayat dari akun Anda</div></div></div>' +
+      '<div class="content"><div class="card" style="text-align:center;padding:48px 24px;"><span class="spinner"></span><div style="margin-top:12px;font-weight:600;">Menyinkronkan data akun ' + esc(state.user.email) + '...</div><div style="font-size:12.5px;color:var(--muted);margin-top:4px;">Memeriksa dataset aktif dan hasil forecasting tersimpan di akun Anda.</div></div></div>';
   } else {
     if (state.page === "overview") pageHtml = renderOverview();
     else if (state.page === "material") pageHtml = renderDetail();
@@ -2190,12 +2315,8 @@ function attachEvents() {
   var app = document.getElementById("app");
 
   var logoutBtn = app.querySelector('[data-action="logout"]');
-  if (logoutBtn) logoutBtn.addEventListener("click", async function () {
-    resetWorkspaceMemory();
-    try {
-      if (window.firebaseAuth && window.firebaseSignOut) await window.firebaseSignOut(window.firebaseAuth);
-    } catch (e) { console.warn("Firebase sign-out gagal:", e); }
-    renderLogin(null);
+  if (logoutBtn) logoutBtn.addEventListener("click", function () {
+    performSecureLogout("Anda telah keluar dari sesi dengan aman.", "info");
   });
 
   var retryBtn = app.querySelector('[data-action="retry-sync"]');
@@ -2204,13 +2325,13 @@ function attachEvents() {
   });
 
   app.querySelectorAll('[data-action="goto"]').forEach(function (el) {
-    el.addEventListener("click", function () { state.page = el.getAttribute("data-page"); render(); });
+    el.addEventListener("click", function () { navigateToPage(el.getAttribute("data-page"), false); });
   });
   app.querySelectorAll('[data-action="filter"]').forEach(function (el) {
     el.addEventListener("click", function () { state.filterClass = el.getAttribute("data-class"); render(); });
   });
   app.querySelectorAll('[data-action="select-detail"]').forEach(function (el) {
-    el.addEventListener("click", function () { state.selected = el.getAttribute("data-code"); state.page = "material"; render(); });
+    el.addEventListener("click", function () { state.selected = el.getAttribute("data-code"); navigateToPage("material", false); });
   });
   app.querySelectorAll('[data-action="select-forecast"]').forEach(function (el) {
     el.addEventListener("click", function () {
@@ -2381,90 +2502,577 @@ function handleOfflineCsvPreview(file) {
 }
 
 /* ============================================================
-   LOGIN GATE — FIREBASE EMAIL/PASSWORD
+   SESSION MANAGEMENT, PROTECTED ROUTES, DUPLICATE-TAB GUARD,
+   AUTOMATIC INACTIVITY TIMEOUT, & SECURE LOGOUT
    ============================================================ */
-function firebaseLoginErrorMessage(error) {
-  var code = error && error.code ? error.code : "";
-  if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") return "Email atau password salah.";
-  if (code === "auth/invalid-email") return "Format email tidak valid.";
-  if (code === "auth/too-many-requests") return "Terlalu banyak percobaan login. Coba lagi beberapa saat.";
-  if (code === "auth/network-request-failed") return "Koneksi internet bermasalah. Periksa koneksi lalu coba lagi.";
-  if (code === "auth/unauthorized-domain") return "Domain ini belum ditambahkan ke Authorized Domains di Firebase Authentication Console.";
-  if (code === "auth/operation-not-allowed") return "Login Email/Password belum diaktifkan di Firebase Authentication.";
-  return "Login gagal. " + (error && error.message ? error.message : "Terjadi kesalahan Firebase.");
+var ROUTE_TO_PAGE = {
+  "#/overview": "overview",
+  "#/material": "material",
+  "#/forecast": "forecast",
+  "#/upload": "data",
+  "#/data": "data",
+  "#/datasets": "datasets",
+  "#/audit": "audit"
+};
+var PAGE_TO_ROUTE = {
+  overview: "#/overview",
+  material: "#/material",
+  forecast: "#/forecast",
+  data: "#/upload",
+  datasets: "#/datasets",
+  audit: "#/audit"
+};
+
+var sessionState = {
+  activeTabSessionId: null,
+  lastActivityAt: Date.now(),
+  lastThrottleWriteAt: 0,
+  tickTimer: null,
+  warningVisible: false,
+  interactiveSignInPending: false,
+  logoutInProgress: false,
+  pendingLoginNotice: null,
+  pendingLoginKind: "info",
+  channel: null
+};
+
+function readTabSessionRecord() {
+  try {
+    var raw = sessionStorage.getItem(SESSION_MARKER_KEY);
+    if (!raw) return null;
+    var parsed = JSON.parse(raw);
+    if (!parsed || !parsed.uid || !parsed.tabSessionId) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
 }
 
-function renderLogin(errorMsg) {
+function writeTabSessionRecord(uid, tabSessionId, startedAt, lastActivityAt) {
+  try {
+    sessionStorage.setItem(SESSION_MARKER_KEY, JSON.stringify({
+      uid: uid,
+      tabSessionId: tabSessionId,
+      startedAt: startedAt,
+      lastActivityAt: lastActivityAt
+    }));
+  } catch (e) {}
+}
+
+function purgeLegacyPersistentFirebaseAuth() {
+  try {
+    var keysToRemove = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && (k.indexOf("firebase:authUser:") === 0 || k.indexOf("firebase:redirectUser:") === 0)) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+  } catch (e) {}
+  try {
+    if (window.indexedDB && typeof window.indexedDB.deleteDatabase === "function") {
+      window.indexedDB.deleteDatabase("firebaseLocalStorageDb");
+    }
+  } catch (e) {}
+}
+
+function clearBrowserSensitiveStorage() {
+  try { sessionStorage.removeItem(SESSION_MARKER_KEY); } catch (e) {}
+  LEGACY_LOCAL_KEYS.forEach(function (k) {
+    try { localStorage.removeItem(k); } catch (e) {}
+  });
+  purgeLegacyPersistentFirebaseAuth();
+}
+
+function initSessionBroadcastChannel() {
+  if (typeof BroadcastChannel === "undefined") return;
+  try {
+    sessionState.channel = new BroadcastChannel("forecast_studio_session_guard");
+    sessionState.channel.onmessage = function (ev) {
+      var msg = ev && ev.data;
+      if (!msg || msg.senderId === TAB_INSTANCE_ID) return;
+      if (msg.type === "PROBE_SESSION" && sessionState.activeTabSessionId && msg.tabSessionId === sessionState.activeTabSessionId) {
+        sessionState.channel.postMessage({
+          type: "SESSION_CLAIMED",
+          tabSessionId: sessionState.activeTabSessionId,
+          senderId: TAB_INSTANCE_ID
+        });
+      }
+    };
+  } catch (e) {
+    sessionState.channel = null;
+  }
+}
+initSessionBroadcastChannel();
+
+function probeDuplicateTabSession(tabSessionId) {
+  return new Promise(function (resolve) {
+    if (!sessionState.channel || !tabSessionId) { resolve(false); return; }
+    var duplicated = false;
+    var listener = function (ev) {
+      var msg = ev && ev.data;
+      if (msg && msg.type === "SESSION_CLAIMED" && msg.tabSessionId === tabSessionId && msg.senderId !== TAB_INSTANCE_ID) {
+        duplicated = true;
+      }
+    };
+    sessionState.channel.addEventListener("message", listener);
+    try {
+      sessionState.channel.postMessage({
+        type: "PROBE_SESSION",
+        tabSessionId: tabSessionId,
+        senderId: TAB_INSTANCE_ID
+      });
+    } catch (e) {}
+    setTimeout(function () {
+      try { sessionState.channel.removeEventListener("message", listener); } catch (e) {}
+      resolve(duplicated);
+    }, 140);
+  });
+}
+
+function fmtCountdown(ms) {
+  var totalSec = Math.max(0, Math.ceil(ms / 1000));
+  var mm = Math.floor(totalSec / 60);
+  var ss = totalSec % 60;
+  return String(mm).padStart(2, "0") + ":" + String(ss).padStart(2, "0");
+}
+
+function showTimeoutModal(remainingMs) {
+  var modal = document.getElementById("session-timeout-modal");
+  var cd = document.getElementById("timeout-countdown");
+  if (cd) cd.textContent = fmtCountdown(remainingMs);
+  if (modal && !sessionState.warningVisible) {
+    modal.classList.add("open");
+    sessionState.warningVisible = true;
+  }
+}
+
+function hideTimeoutModal() {
+  var modal = document.getElementById("session-timeout-modal");
+  if (modal) modal.classList.remove("open");
+  sessionState.warningVisible = false;
+}
+
+function recordUserActivity(forceWrite) {
+  if (!state.user || !sessionState.activeTabSessionId) return;
+  // Saat modal peringatan terbuka, user harus klik "Lanjutkan Sesi" secara eksplisit
+  if (sessionState.warningVisible && !forceWrite) return;
+  var now = Date.now();
+  sessionState.lastActivityAt = now;
+  if (forceWrite || now - sessionState.lastThrottleWriteAt >= 5000) {
+    sessionState.lastThrottleWriteAt = now;
+    var rec = readTabSessionRecord();
+    writeTabSessionRecord(state.user.uid, sessionState.activeTabSessionId, rec ? rec.startedAt : now, now);
+  }
+}
+
+function checkSessionInactivity() {
+  if (!state.user || !sessionState.activeTabSessionId || sessionState.logoutInProgress) return;
+  var cfg = getSessionSettings();
+  var rec = readTabSessionRecord();
+  var lastAct = Math.max(sessionState.lastActivityAt, rec && rec.lastActivityAt ? rec.lastActivityAt : 0);
+  var elapsed = Date.now() - lastAct;
+  var remaining = cfg.timeoutMs - elapsed;
+
+  if (remaining <= 0) {
+    // Jika proses forecasting sedang berjalan di tengah request, tetap logout aman tanpa menghapus data permanen
+    var extra = (bb.busy || bb.uploading)
+      ? " Proses analisis yang sudah terkirim ke server tetap diselesaikan dan tersimpan aman di akun Anda."
+      : " Seluruh dataset dan hasil analisis yang tersimpan tetap aman di akun Anda.";
+    performSecureLogout(
+      "Sesi berakhir otomatis karena tidak ada aktivitas selama " + cfg.timeoutMinutes + " menit." + extra,
+      "warn"
+    );
+    return;
+  }
+
+  if (remaining <= cfg.warningMs) {
+    showTimeoutModal(remaining);
+  } else if (sessionState.warningVisible) {
+    hideTimeoutModal();
+  }
+}
+
+var activityEvents = ["mousemove", "mousedown", "keydown", "scroll", "touchstart", "click", "pointerdown"];
+function onUserActivityEvent() { recordUserActivity(false); }
+function onVisibilityChange() {
+  if (document.visibilityState === "visible") checkSessionInactivity();
+}
+
+function startInactivityMonitor() {
+  stopInactivityMonitor();
+  sessionState.lastActivityAt = Date.now();
+  activityEvents.forEach(function (evName) {
+    window.addEventListener(evName, onUserActivityEvent, { passive: true });
+  });
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  sessionState.tickTimer = setInterval(checkSessionInactivity, 1000);
+}
+
+function stopInactivityMonitor() {
+  if (sessionState.tickTimer) {
+    clearInterval(sessionState.tickTimer);
+    sessionState.tickTimer = null;
+  }
+  activityEvents.forEach(function (evName) {
+    window.removeEventListener(evName, onUserActivityEvent);
+  });
+  document.removeEventListener("visibilitychange", onVisibilityChange);
+  hideTimeoutModal();
+}
+
+(function bindTimeoutModalButtons() {
+  var extendBtn = document.getElementById("timeout-extend-btn");
+  var logoutBtn = document.getElementById("timeout-logout-btn");
+  if (extendBtn) {
+    extendBtn.addEventListener("click", function () {
+      hideTimeoutModal();
+      recordUserActivity(true);
+      showToast("Sesi diperpanjang.");
+    });
+  }
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", function () {
+      performSecureLogout("Anda telah keluar dari sesi dengan aman.", "info");
+    });
+  }
+})();
+
+function pageFromCurrentHash() {
+  var h = String(window.location.hash || "").split("?")[0].toLowerCase();
+  return ROUTE_TO_PAGE[h] || null;
+}
+
+function lockToLoginRoute() {
+  try {
+    if (window.location.hash !== "#/login") {
+      history.replaceState({ auth: false }, "", "#/login");
+    }
+    history.pushState({ auth: false, guard: true }, "", "#/login");
+  } catch (e) {
+    window.location.hash = "#/login";
+  }
+}
+
+function navigateToPage(page, replaceHistory) {
+  if (!state.authVerified || !state.user) {
+    lockToLoginRoute();
+    renderLogin("Silakan login untuk mengakses dashboard.", "warn");
+    return;
+  }
+  var validPage = PAGE_TO_ROUTE[page] ? page : "overview";
+  state.page = validPage;
+  var targetHash = PAGE_TO_ROUTE[validPage];
+  try {
+    if (window.location.hash !== targetHash) {
+      if (replaceHistory) history.replaceState({ auth: true, page: validPage }, "", targetHash);
+      else history.pushState({ auth: true, page: validPage }, "", targetHash);
+    }
+  } catch (e) {}
+  render();
+}
+
+function handleProtectedRouteChange() {
+  if (!state.authVerified) return;
+  if (!state.user || !sessionState.activeTabSessionId) {
+    // Cegah akses direct URL maupun tombol Back setelah logout
+    var app = document.getElementById("app");
+    if (app) app.innerHTML = "";
+    lockToLoginRoute();
+    renderLogin(sessionState.pendingLoginNotice || "Silakan login untuk mengakses dashboard.", sessionState.pendingLoginKind || "warn");
+    return;
+  }
+  var p = pageFromCurrentHash();
+  if (p) {
+    if (state.page !== p) {
+      state.page = p;
+      render();
+    }
+  } else {
+    navigateToPage(state.page || "overview", true);
+  }
+}
+
+window.addEventListener("hashchange", handleProtectedRouteChange);
+window.addEventListener("popstate", handleProtectedRouteChange);
+window.addEventListener("pageshow", function (event) {
+  // Proteksi bfcache browser saat user menekan Back setelah logout
+  if (event.persisted) {
+    var rec = readTabSessionRecord();
+    if (!state.user || !rec || rec.uid !== state.user.uid) {
+      resetWorkspaceMemory();
+      stopInactivityMonitor();
+      clearBrowserSensitiveStorage();
+      var app = document.getElementById("app");
+      if (app) app.innerHTML = "";
+      lockToLoginRoute();
+      renderLogin("Sesi tidak aktif. Silakan login kembali.", "warn");
+    }
+  }
+});
+
+async function performSecureLogout(noticeMsg, alertKind) {
+  if (sessionState.logoutInProgress) return;
+  sessionState.logoutInProgress = true;
+  sessionState.pendingLoginNotice = noticeMsg || null;
+  sessionState.pendingLoginKind = alertKind || "info";
+  sessionState.activeTabSessionId = null;
+  sessionState.interactiveSignInPending = false;
+
+  stopInactivityMonitor();
+  resetWorkspaceMemory();
+  clearBrowserSensitiveStorage();
+
+  // Bersihkan seluruh konten DOM dashboard segera sebelum signOut selesai
   var app = document.getElementById("app");
+  if (app) app.innerHTML = "";
+
+  try {
+    if (window.firebaseAuth && window.firebaseSignOut) {
+      await window.firebaseSignOut(window.firebaseAuth);
+    }
+  } catch (e) {
+    console.warn("Firebase sign-out warning:", e);
+  }
+
+  window.firebaseCurrentUser = null;
+  state.authVerified = true;
+  lockToLoginRoute();
+  renderLogin(sessionState.pendingLoginNotice, sessionState.pendingLoginKind);
+  sessionState.logoutInProgress = false;
+}
+
+/* ============================================================
+   LOGIN GATE — PROFESSIONAL BRANDED EMAIL/PASSWORD AUTH
+   ============================================================ */
+function isValidEmailFormat(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+}
+
+function firebaseLoginErrorMessage(error) {
+  var code = error && error.code ? error.code : "";
+  if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+    return "Email atau password tidak sesuai. Periksa kembali kredensial akun Anda.";
+  }
+  if (code === "auth/invalid-email") return "Format alamat email tidak valid.";
+  if (code === "auth/user-disabled") return "Akun ini telah dinonaktifkan oleh administrator.";
+  if (code === "auth/too-many-requests") return "Terlalu banyak percobaan login gagal. Coba lagi beberapa saat.";
+  if (code === "auth/network-request-failed") return "Koneksi internet bermasalah. Periksa koneksi Anda lalu coba lagi.";
+  if (code === "auth/unauthorized-domain") return "Domain ini belum diotorisasi di Firebase Authentication.";
+  if (code === "auth/operation-not-allowed") return "Metode login Email/Password belum diaktifkan.";
+  return "Autentikasi gagal. " + (error && error.message ? error.message : "Silakan coba lagi.");
+}
+
+function renderLogin(alertMsg, alertKind, prefillEmail) {
+  hideTimeoutModal();
+  var app = document.getElementById("app");
+  var kind = alertKind || "err";
+  var cfg = getSessionSettings();
+  var eyeOpenSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var eyeOffSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
   app.innerHTML =
-    '<div style="width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:16px;">' +
-      '<div class="card" style="width:100%;max-width:390px;padding:32px 28px;">' +
-        '<div style="text-align:center;margin-bottom:24px;">' +
-          '<div style="font-size:18px;font-weight:800;">Forecast Studio</div>' +
-          '<div style="font-size:12.5px;color:var(--muted);margin-top:4px;">Dashboard Forecasting Material &middot; Multi-Device Firebase Workspace</div>' +
+    '<div class="auth-shell">' +
+      '<div class="auth-card">' +
+        '<div class="auth-brand">' +
+          '<div class="auth-logo">DS</div>' +
+          '<div class="auth-title">Dead Stock Forecast Studio</div>' +
+          '<div class="auth-subtitle">Dead Stock Analytics &amp; Intermittent Demand Forecasting</div>' +
         '</div>' +
-        '<label class="field-label" for="auth-user">Email</label>' +
-        '<input class="field" id="auth-user" type="email" style="width:100%;margin-bottom:14px;" placeholder="nama@email.com" autocomplete="username">' +
-        '<label class="field-label" for="auth-pass">Password</label>' +
-        '<input class="field" id="auth-pass" type="password" style="width:100%;margin-bottom:6px;" placeholder="Password" autocomplete="current-password">' +
-        (errorMsg ? '<div style="color:var(--lumpy);font-size:12px;margin-top:6px;line-height:1.45;">' + esc(errorMsg) + '</div>' : '') +
-        '<button class="btn" id="auth-submit" style="width:100%;margin-top:16px;">Masuk</button>' +
-        '<div style="font-size:11px;color:var(--faint);margin-top:18px;text-align:center;line-height:1.5;">Setiap akun Firebase memiliki workspace, dataset aktif, dan riwayat forecasting terpisah yang otomatis tersinkron lintas perangkat.</div>' +
+        (alertMsg
+          ? '<div class="auth-alert ' + esc(kind) + '" role="alert"><span>' + (kind === "err" ? "&#9888;" : "&#9432;") + '</span><span>' + esc(alertMsg) + '</span></div>'
+          : '') +
+        '<form id="auth-form" novalidate>' +
+          '<div class="auth-field-group">' +
+            '<label class="field-label" for="auth-user">Alamat Email</label>' +
+            '<input class="field" id="auth-user" type="email" style="width:100%;" placeholder="nama@gmail.com" autocomplete="username" value="' + esc(prefillEmail || "") + '" required>' +
+          '</div>' +
+          '<div class="auth-field-group">' +
+            '<label class="field-label" for="auth-pass">Password</label>' +
+            '<div class="pw-wrap">' +
+              '<input class="field" id="auth-pass" type="password" placeholder="Masukkan password Anda" autocomplete="current-password" required>' +
+              '<button type="button" class="pw-toggle" id="auth-pw-toggle" aria-label="Tampilkan password" title="Tampilkan / sembunyikan password">' + eyeOpenSvg + '</button>' +
+            '</div>' +
+          '</div>' +
+          '<div id="auth-inline-err" style="color:var(--lumpy);font-size:12px;min-height:16px;margin-bottom:8px;"></div>' +
+          '<button type="submit" class="btn auth-submit" id="auth-submit">Masuk ke Dashboard</button>' +
+        '</form>' +
+        '<div class="auth-meta">' +
+          'Akses berbasis sesi aman &middot; Anda wajib login ulang saat membuka tab atau browser baru, serta logout otomatis setelah ' + cfg.timeoutMinutes + ' menit tidak aktif.' +
+        '</div>' +
       '</div>' +
     '</div>';
 
+  var formEl = document.getElementById("auth-form");
   var emailEl = document.getElementById("auth-user");
   var passEl = document.getElementById("auth-pass");
+  var toggleEl = document.getElementById("auth-pw-toggle");
+  var inlineErr = document.getElementById("auth-inline-err");
   var submitEl = document.getElementById("auth-submit");
 
-  async function attempt() {
+  if (toggleEl && passEl) {
+    toggleEl.addEventListener("click", function () {
+      var show = passEl.type === "password";
+      passEl.type = show ? "text" : "password";
+      toggleEl.innerHTML = show ? eyeOffSvg : eyeOpenSvg;
+      toggleEl.setAttribute("aria-label", show ? "Sembunyikan password" : "Tampilkan password");
+    });
+  }
+
+  function setLoading(loading) {
+    emailEl.disabled = loading;
+    passEl.disabled = loading;
+    if (toggleEl) toggleEl.disabled = loading;
+    submitEl.disabled = loading;
+    submitEl.innerHTML = loading
+      ? '<span class="spinner" style="width:15px;height:15px;border-width:2px;border-top-color:#fff;border-color:rgba(255,255,255,0.35);"></span>Memverifikasi sesi...'
+      : 'Masuk ke Dashboard';
+  }
+
+  formEl.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    inlineErr.textContent = "";
     var email = emailEl.value.trim();
     var password = passEl.value;
-    if (!email || !password) { renderLogin("Email dan password wajib diisi."); return; }
 
-    submitEl.disabled = true;
-    submitEl.textContent = "Memproses...";
+    if (!email) {
+      inlineErr.textContent = "Alamat email wajib diisi.";
+      emailEl.focus();
+      return;
+    }
+    if (!isValidEmailFormat(email)) {
+      inlineErr.textContent = "Format alamat email tidak valid (contoh: nama@gmail.com).";
+      emailEl.focus();
+      return;
+    }
+    if (!password) {
+      inlineErr.textContent = "Password wajib diisi.";
+      passEl.focus();
+      return;
+    }
+
+    setLoading(true);
+    sessionState.interactiveSignInPending = true;
 
     try {
       var fb = await window.__firebaseReady;
       if (!fb || !window.firebaseAuth) {
-        var detail = window.firebaseInitError && window.firebaseInitError.message ? " Detail: " + window.firebaseInitError.message : "";
-        renderLogin("Firebase Authentication belum berhasil terhubung." + detail);
+        sessionState.interactiveSignInPending = false;
+        renderLogin("Layanan autentikasi belum siap. Periksa koneksi internet Anda lalu coba lagi.", "err", email);
         return;
       }
-      await window.firebaseSignIn(window.firebaseAuth, email, password);
-    } catch (err) {
-      renderLogin(firebaseLoginErrorMessage(err));
-    }
-  }
 
-  submitEl.addEventListener("click", attempt);
-  passEl.addEventListener("keydown", function (e) { if (e.key === "Enter") attempt(); });
-  emailEl.addEventListener("keydown", function (e) { if (e.key === "Enter") attempt(); });
+      // Buat penanda sesi per-tab sebelum sign-in selesai agar tidak race dengan onAuthStateChanged
+      var newTabSessId = "ts_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+      sessionState.activeTabSessionId = newTabSessId;
+      var cred = await window.firebaseSignIn(window.firebaseAuth, email, password);
+      var now = Date.now();
+      sessionState.lastActivityAt = now;
+      sessionState.pendingLoginNotice = null;
+      writeTabSessionRecord(cred.user.uid, sessionState.activeTabSessionId || newTabSessId, now, now);
+    } catch (err) {
+      sessionState.interactiveSignInPending = false;
+      sessionState.activeTabSessionId = null;
+      clearBrowserSensitiveStorage();
+      renderLogin(firebaseLoginErrorMessage(err), "err", email);
+    }
+  });
 }
 
 /* ============================================================
-   BOOT — AUTH STATE LISTENER
+   BOOT — STRICT SESSION-BASED AUTH STATE GUARD
    ============================================================ */
 document.getElementById("app").innerHTML =
-  '<div style="width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--muted);font-size:13px;"><span class="spinner" style="margin-right:10px;"></span>Memeriksa sesi Firebase...</div>';
+  '<div class="auth-shell"><div style="display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;"><span class="spinner"></span>Memverifikasi status autentikasi...</div></div>';
 
 window.__firebaseReady.then(function (fb) {
   if (!fb) {
-    var detail = window.firebaseInitError && window.firebaseInitError.message ? " Detail: " + window.firebaseInitError.message : "";
-    renderLogin("Firebase Authentication belum berhasil terhubung." + detail);
+    state.authVerified = true;
+    lockToLoginRoute();
+    renderLogin("Layanan autentikasi belum berhasil terhubung. Periksa koneksi internet Anda.", "err");
     return;
   }
-  window.firebaseOnAuthStateChanged(fb.auth, function (user) {
-    window.firebaseCurrentUser = user || null;
-    if (user) {
-      // Pastikan state akun sebelumnya benar-benar bersih sebelum memuat workspace akun baru
+
+  var initialRoute = pageFromCurrentHash();
+
+  window.firebaseOnAuthStateChanged(fb.auth, async function (user) {
+    if (sessionState.logoutInProgress) return;
+
+    if (!user) {
+      window.firebaseCurrentUser = null;
+      sessionState.activeTabSessionId = null;
+      sessionState.interactiveSignInPending = false;
+      stopInactivityMonitor();
       resetWorkspaceMemory();
-      startWorkspaceSync(user);
-    } else {
-      resetWorkspaceMemory();
-      renderLogin(null);
+      clearBrowserSensitiveStorage();
+      state.authVerified = true;
+      var notice = sessionState.pendingLoginNotice;
+      var kind = sessionState.pendingLoginKind || "info";
+      if (!notice && initialRoute) {
+        notice = "Silakan login terlebih dahulu untuk mengakses halaman dashboard.";
+        kind = "warn";
+      }
+      initialRoute = null;
+      lockToLoginRoute();
+      renderLogin(notice, kind);
+      return;
     }
+
+    // Validasi ketat sesi per-tab (memblokir auto-login dari persistent LOCAL storage lama,
+    // tab baru independen, tab duplikat, dan sesi yang sudah kedaluwarsa)
+    var cfg = getSessionSettings();
+    var rec = readTabSessionRecord();
+
+    if (sessionState.interactiveSignInPending) {
+      // Baru saja login lewat form pada tab ini
+      sessionState.interactiveSignInPending = false;
+      if (!sessionState.activeTabSessionId) {
+        var freshId = "ts_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+        sessionState.activeTabSessionId = freshId;
+        writeTabSessionRecord(user.uid, freshId, Date.now(), Date.now());
+      }
+    } else {
+      // Pemulihan sesi pada load/refresh halaman
+      if (window.firebaseAuthPersistenceMode === "NONE") {
+        await performSecureLogout("Sesi memerlukan autentikasi ulang. Silakan login kembali.", "info");
+        return;
+      }
+      if (!rec || rec.uid !== user.uid) {
+        // Deteksi sesi lama dari persistent LOCAL IndexedDB tanpa penanda tab aktif -> paksa logout!
+        await performSecureLogout("Silakan login untuk memulai sesi baru.", "info");
+        return;
+      }
+      if (Date.now() - (rec.lastActivityAt || 0) >= cfg.timeoutMs) {
+        await performSecureLogout("Sesi sebelumnya telah kedaluwarsa karena tidak ada aktivitas. Silakan login kembali.", "warn");
+        return;
+      }
+      // Deteksi duplicate tab (Chrome Right-Click -> Duplicate mengkloning sessionStorage)
+      var isDup = await probeDuplicateTabSession(rec.tabSessionId);
+      if (isDup) {
+        await performSecureLogout("Tab baru / duplikat terdeteksi. Silakan login ulang untuk memulai sesi terpisah.", "warn");
+        return;
+      }
+      // Refresh tab aktif yang sah: lanjutkan sesi
+      sessionState.activeTabSessionId = rec.tabSessionId;
+      sessionState.lastActivityAt = Date.now();
+      writeTabSessionRecord(user.uid, rec.tabSessionId, rec.startedAt || Date.now(), sessionState.lastActivityAt);
+    }
+
+    // Autentikasi & validasi sesi lulus -> izinkan akses dashboard
+    window.firebaseCurrentUser = user;
+    state.authVerified = true;
+    sessionState.pendingLoginNotice = null;
+    resetWorkspaceMemory();
+    state.page = initialRoute || pageFromCurrentHash() || "overview";
+    initialRoute = null;
+
+    try {
+      history.replaceState({ auth: true, page: state.page }, "", PAGE_TO_ROUTE[state.page] || "#/overview");
+    } catch (e) {}
+
+    startInactivityMonitor();
+    startWorkspaceSync(user);
   });
 });
 </script>

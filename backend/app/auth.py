@@ -65,7 +65,13 @@ def verify_firebase_user(
     except firebase_store.TokenExpiredError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Sesi login Firebase telah kedaluwarsa. Silakan muat ulang atau login kembali.",
+            detail="Sesi login Firebase telah kedaluwarsa. Silakan login kembali.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except firebase_store.TokenRevokedError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sesi akun Anda telah dicabut. Silakan login kembali.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     except Exception as exc:

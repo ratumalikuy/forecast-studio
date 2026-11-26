@@ -15,10 +15,13 @@ def _sample_csv() -> bytes:
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
-def test_health_check_public() -> None:
+def test_health_check_public_and_security_headers() -> None:
     client = TestClient(app)
     res = client.get("/")
     assert res.status_code == 200
+    assert res.headers.get("cache-control") == "no-store, private"
+    assert res.headers.get("x-content-type-options") == "nosniff"
+    assert res.headers.get("x-frame-options") == "DENY"
     body = res.json()
     assert body["status"] == "ok"
     assert body["formula_version"] == "excel-verified-v1"
@@ -27,8 +30,15 @@ def test_health_check_public() -> None:
 def test_protected_endpoints_require_auth() -> None:
     app.dependency_overrides.clear()
     client = TestClient(app)
-    res = client.get("/materials")
-    assert res.status_code == 401
+    for method, path in (
+        ("GET", "/materials"),
+        ("GET", "/datasets"),
+        ("POST", "/datasets/ds_test/activate"),
+        ("DELETE", "/datasets/ds_test"),
+        ("GET", "/datasets/ds_test/download-url"),
+    ):
+        res = client.request(method, path)
+        assert res.status_code == 401, f"{method} {path} expected 401, got {res.status_code}"
 
 
 def test_uid_isolation_on_uploads_and_jobs() -> None:

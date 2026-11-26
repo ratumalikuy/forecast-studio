@@ -46,6 +46,10 @@ class TokenExpiredError(Exception):
     """Raised when a Firebase ID token has expired."""
 
 
+class TokenRevokedError(Exception):
+    """Raised when a Firebase ID token has been revoked."""
+
+
 def _sanitize_filename(name: str) -> str:
     clean = re.sub(r"[^A-Za-z0-9._-]", "_", os.path.basename(name or "dataset.xlsx"))
     return clean[:120] or "dataset.xlsx"
@@ -222,6 +226,7 @@ class FirebaseStore:
     """Thread-safe wrapper around Firebase Admin Auth, Firestore, and Storage."""
 
     TokenExpiredError = TokenExpiredError
+    TokenRevokedError = TokenRevokedError
 
     def __init__(self) -> None:
         self._app = None
@@ -304,9 +309,11 @@ class FirebaseStore:
         if not self.auth_ready:
             raise RuntimeError("Firebase Admin Auth belum aktif.")
         try:
-            return fb_auth.verify_id_token(id_token, app=self._app, check_revoked=False)
+            return fb_auth.verify_id_token(id_token, app=self._app, check_revoked=True)
         except fb_auth.ExpiredIdTokenError as exc:
             raise TokenExpiredError("Token kedaluwarsa") from exc
+        except fb_auth.RevokedIdTokenError as exc:
+            raise TokenRevokedError("Token telah dicabut") from exc
 
     def _user_ref(self, uid: str):
         return self._db.collection("users").document(uid)

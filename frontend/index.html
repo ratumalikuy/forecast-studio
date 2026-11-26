@@ -6,36 +6,37 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Dead Stock Analytics</title>
+<title>Dead Stock Analytics — Spare Parts Demand Forecasting</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="./config.js"></script>
 <style>
   :root {
-    --bg: #F5F7FB;
+    --bg: #F6F8FA;
     --panel: #FFFFFF;
-    --border: #E4E8F0;
-    --border-strong: #D3D9E4;
-    --text: #1B2233;
-    --muted: #667085;
-    --faint: #9AA4B2;
-    --accent: #3E63DD;
-    --accent-dim: #EAEFFD;
-    --teal: #0EA5A0;
-    --teal-dim: #E6F7F6;
-    --lumpy: #E5484D;
-    --lumpy-dim: #FBE9E9;
-    --intermittent: #3E63DD;
-    --intermittent-dim: #EAEFFD;
-    --erratic: #8E4EC6;
-    --erratic-dim: #F3EAFB;
-    --smooth: #12A150;
-    --smooth-dim: #E7F7ED;
-    --high: #12A150;
-    --high-dim: #E7F7ED;
-    --medium: #F5A524;
-    --medium-dim: #FDF3E1;
-    --shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.04);
+    --border: #E2E6EE;
+    --border-strong: #CBD3E1;
+    --text: #141B29;
+    --muted: #5A6578;
+    --faint: #8A94A6;
+    --accent: #2554C7;
+    --accent-hover: #1D44A8;
+    --accent-dim: #EEF3FC;
+    --teal: #0F766E;
+    --teal-dim: #E6F4F1;
+    --lumpy: #C83232;
+    --lumpy-dim: #FDECEC;
+    --intermittent: #2554C7;
+    --intermittent-dim: #EEF3FC;
+    --erratic: #6D3CC9;
+    --erratic-dim: #F3EEFC;
+    --smooth: #15803D;
+    --smooth-dim: #EAF7EE;
+    --high: #15803D;
+    --high-dim: #EAF7EE;
+    --medium: #B45309;
+    --medium-dim: #FEF5E7;
+    --shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
@@ -43,176 +44,238 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background: var(--bg);
     color: var(--text);
-    font-size: 14px;
+    font-size: 13.5px;
     line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
   }
   .mono { font-family: 'Roboto Mono', ui-monospace, monospace; }
-  ::-webkit-scrollbar { width: 9px; height: 9px; }
-  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   button { cursor: pointer; font-family: inherit; }
   button:disabled { opacity: 0.55; cursor: not-allowed; }
   input, select { font-family: inherit; }
 
-  #app { display: flex; min-height: 100vh; }
+  /* ===== Fixed Sidebar + Independently Scrollable Main Content ===== */
+  #app { display: flex; height: 100vh; width: 100%; overflow: hidden; }
 
-  /* ===== Left Nav ===== */
   .nav {
-    width: 248px;
+    width: 256px;
+    height: 100vh;
     flex-shrink: 0;
     background: var(--panel);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
   .nav-brand {
-    padding: 20px 20px 16px;
+    padding: 18px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .nav-brand-row { display: flex; align-items: center; gap: 10px; }
+  .nav-brand-mark {
+    width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px; letter-spacing: -0.2px;
+  }
+  .nav-brand-title { font-size: 14.5px; font-weight: 700; letter-spacing: -0.2px; color: var(--text); line-height: 1.2; }
+  .nav-brand-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.3; }
+
+  .nav-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 12px;
+  }
+  .nav-group { margin-bottom: 18px; }
+  .nav-group:last-child { margin-bottom: 0; }
+  .nav-group-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--faint);
+    padding: 0 10px 7px;
+  }
+  .nav-pages { display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8.5px 10px; border-radius: 6px;
+    background: transparent; border: none; border-left: 2.5px solid transparent;
+    text-align: left; font-size: 13px; font-weight: 500; color: var(--muted);
+    width: 100%; transition: background 0.12s ease, color 0.12s ease;
+  }
+  .nav-item svg { flex-shrink: 0; opacity: 0.78; }
+  .nav-item.active {
+    background: var(--accent-dim); color: var(--accent);
+    border-left-color: var(--accent); font-weight: 600;
+  }
+  .nav-item.active svg { opacity: 1; }
+  .nav-item:hover:not(.active) { background: var(--bg); color: var(--text); }
+
+  .nav-footer {
+    flex-shrink: 0;
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    background: #FAFBFC;
+  }
+  .nav-dataset-meta {
+    font-size: 11.5px; color: var(--muted);
+    padding-bottom: 10px; margin-bottom: 10px;
     border-bottom: 1px solid var(--border);
   }
-  .nav-brand-title { font-size: 15px; font-weight: 700; letter-spacing: -0.1px; }
-  .nav-brand-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
-  .nav-workspace-pill {
-    margin: 12px 12px 4px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    font-size: 11.5px;
+  .nav-dataset-name {
+    font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .nav-pages { padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
-  .nav-item {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    padding: 9px 12px; border-radius: 6px;
-    background: transparent; border: none; border-left: 3px solid transparent;
-    text-align: left; font-size: 13.5px; font-weight: 500; color: var(--muted);
-    width: 100%;
+  .nav-account-email {
+    font-size: 12px; font-weight: 600; color: var(--text);
+    word-break: break-all; margin-bottom: 8px;
   }
-  .nav-item.active { background: var(--accent-dim); color: var(--accent); border-left: 3px solid var(--accent); font-weight: 600; }
-  .nav-item:hover:not(.active) { background: #F5F7FB; }
-  .nav-count {
-    font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px;
-    background: var(--bg); color: var(--muted); border: 1px solid var(--border);
+  .nav-signout-btn {
+    width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    background: var(--panel); color: var(--text); border: 1px solid var(--border-strong);
   }
-  .nav-item.active .nav-count { background: #fff; color: var(--accent); border-color: #C7D4F9; }
-  .nav-footer { margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--border); font-size: 11px; color: var(--faint); line-height: 1.55; }
+  .nav-signout-btn:hover { background: var(--lumpy-dim); border-color: #E5B4B4; color: var(--lumpy); }
 
-  /* ===== Main ===== */
-  .main { flex: 1; overflow-y: auto; min-width: 0; }
+  /* ===== Main Content Pane (Independently Scrollable) ===== */
+  .main { flex: 1; height: 100vh; overflow-y: auto; min-width: 0; background: var(--bg); }
   .topbar {
     background: var(--panel); border-bottom: 1px solid var(--border);
-    padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    position: sticky; top: 0; z-index: 5; flex-wrap: wrap;
+    padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    position: sticky; top: 0; z-index: 10; flex-wrap: wrap;
   }
-  .topbar-title { font-size: 18px; font-weight: 700; }
-  .topbar-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
-  .content { padding: 26px 32px 72px; max-width: 1360px; }
+  .breadcrumb {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--faint); margin-bottom: 2px;
+  }
+  .topbar-title { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.2px; }
+  .topbar-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .content { padding: 24px 28px 64px; max-width: 1360px; }
 
   select.filter-select {
-    background: var(--panel); border: 1px solid var(--border-strong); border-radius: 7px;
-    padding: 8px 32px 8px 12px; font-size: 13px; color: var(--text); font-weight: 500;
+    background: var(--panel); border: 1px solid var(--border-strong); border-radius: 6px;
+    padding: 7px 30px 7px 11px; font-size: 12.5px; color: var(--text); font-weight: 500;
     appearance: none; max-width: 340px;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23667085'/></svg>");
-    background-repeat: no-repeat; background-position: right 12px center;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%235A6578'/></svg>");
+    background-repeat: no-repeat; background-position: right 10px center;
   }
+  select.filter-select:focus { outline: none; border-color: var(--accent); }
 
-  /* ===== Cards / KPI ===== */
+  /* ===== Layout Grids & Enterprise Cards ===== */
   .grid { display: grid; gap: 14px; }
   .grid-4 { grid-template-columns: repeat(4, 1fr); }
   .grid-3 { grid-template-columns: repeat(3, 1fr); }
   .grid-2 { grid-template-columns: repeat(2, 1fr); }
-  @media (max-width: 1050px) { .grid-4 { grid-template-columns: repeat(2,1fr); } .grid-3 { grid-template-columns: repeat(1,1fr); } }
+  @media (max-width: 1080px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: 1fr; } }
+  @media (max-width: 960px) { .grid-2 { grid-template-columns: 1fr; } }
 
   .card {
-    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
-    box-shadow: var(--shadow); padding: 18px 20px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: var(--shadow); padding: 16px 18px;
   }
-  .kpi-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
-  .kpi-value { font-size: 25px; font-weight: 800; letter-spacing: -0.3px; }
-  .kpi-unit { font-size: 12px; color: var(--faint); font-weight: 500; margin-left: 6px; }
-  .kpi-foot { font-size: 11.5px; color: var(--faint); margin-top: 6px; }
+  .kpi-label { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+  .kpi-value { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
+  .kpi-unit { font-size: 11.5px; color: var(--faint); font-weight: 500; margin-left: 5px; }
+  .kpi-foot { font-size: 11.5px; color: var(--faint); margin-top: 5px; }
 
-  .section { margin-bottom: 28px; }
-  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
-  .section-title { font-size: 15.5px; font-weight: 700; }
-  .section-desc { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.55; }
+  .section { margin-bottom: 24px; }
+  .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .section-title { font-size: 14.5px; font-weight: 700; color: var(--text); letter-spacing: -0.1px; }
+  .section-desc { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
 
-  .badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  /* ===== Minimal Corporate Status Indicators ===== */
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 8px; border-radius: 4px; font-size: 11.5px; font-weight: 600;
+    border: 1px solid transparent;
   }
-  .badge-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .badge-active { background: var(--smooth-dim); color: var(--smooth); }
-  .badge-baseline { background: var(--accent-dim); color: var(--accent); }
-  .badge-history { background: #F1F4F9; color: var(--muted); }
-  .badge-error { background: var(--lumpy-dim); color: var(--lumpy); }
-  .badge-warn { background: var(--medium-dim); color: #9A6700; }
+  .tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .tag-active { background: var(--accent-dim); color: var(--accent); border-color: #CBD9F6; }
+  .tag-muted { background: var(--bg); color: var(--muted); border-color: var(--border); }
+  .tag-error { background: var(--lumpy-dim); color: var(--lumpy); border-color: #EFC2C2; }
+  .tag-warn { background: var(--medium-dim); color: var(--medium); border-color: #F2D7A8; }
 
-  table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  /* ===== Compact Enterprise Tables ===== */
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   table.data-table th {
-    text-align: left; font-size: 11.5px; text-transform: none; color: var(--muted);
-    font-weight: 600; padding: 10px 14px; border-bottom: 1px solid var(--border); white-space: nowrap;
-    background: #FAFBFD;
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;
+    color: var(--muted); font-weight: 600; padding: 9px 12px;
+    border-bottom: 1px solid var(--border); white-space: nowrap; background: #FAFBFC;
   }
-  table.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.data-table td { padding: 8.5px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
   table.data-table tr:last-child td { border-bottom: none; }
   table.data-table tr.clickable { cursor: pointer; }
-  table.data-table tr.clickable:hover { background: #FAFBFD; }
+  table.data-table tr.clickable:hover { background: #F8FAFD; }
+  table.data-table tr.row-selected { background: var(--accent-dim); }
 
+  /* ===== Buttons & Inputs ===== */
   .btn {
-    background: var(--accent); color: #fff; border: none; border-radius: 7px;
-    padding: 9px 16px; font-size: 13px; font-weight: 600;
+    background: var(--accent); color: #fff; border: 1px solid var(--accent); border-radius: 6px;
+    padding: 8px 14px; font-size: 12.5px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   }
-  .btn:hover:not(:disabled) { background: #3555C4; }
-  .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+  .btn:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn-sm { padding: 6px 11px; font-size: 12px; }
   .btn-ghost {
-    background: var(--panel); color: var(--text); border: 1px solid var(--border-strong); border-radius: 7px;
-    padding: 8px 15px; font-size: 13px; font-weight: 500;
+    background: var(--panel); color: var(--text); border: 1px solid var(--border-strong); border-radius: 6px;
+    padding: 7px 13px; font-size: 12.5px; font-weight: 500;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   }
-  .btn-ghost:hover:not(:disabled) { background: #FAFBFD; }
+  .btn-ghost:hover:not(:disabled) { background: var(--bg); }
   .btn-danger {
-    background: var(--lumpy-dim); color: var(--lumpy); border: 1px solid #F2B8BA; border-radius: 7px;
-    padding: 6px 12px; font-size: 12px; font-weight: 600;
+    background: var(--panel); color: var(--lumpy); border: 1px solid #E5B4B4; border-radius: 6px;
+    padding: 5px 10px; font-size: 12px; font-weight: 600;
   }
-  .btn-danger:hover:not(:disabled) { background: #F8D5D6; }
-  .btn-danger-text { background: none; border: none; color: var(--faint); font-size: 12px; }
-  .btn-danger-text:hover { color: var(--lumpy); }
+  .btn-danger:hover:not(:disabled) { background: var(--lumpy-dim); }
+  .btn-link { background: none; border: none; color: var(--accent); font-size: 12px; font-weight: 600; padding: 0; }
+  .btn-link:hover { text-decoration: underline; }
 
   input.field {
-    background: var(--panel); border: 1px solid var(--border-strong); border-radius: 7px;
-    padding: 8px 12px; font-size: 13px; color: var(--text); outline: none;
+    background: var(--panel); border: 1px solid var(--border-strong); border-radius: 6px;
+    padding: 7.5px 11px; font-size: 12.5px; color: var(--text); outline: none;
   }
   input.field:focus { border-color: var(--accent); }
   .field-label { font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 500; display: block; }
 
   .chip {
-    display: inline-flex; align-items: center; padding: 6px 13px; border-radius: 20px;
-    font-size: 12.5px; font-weight: 600; border: 1px solid var(--border-strong); color: var(--muted);
+    display: inline-flex; align-items: center; padding: 5px 11px; border-radius: 5px;
+    font-size: 12px; font-weight: 600; border: 1px solid var(--border-strong); color: var(--muted);
     background: var(--panel);
   }
   .chip.active { background: var(--text); color: #fff; border-color: var(--text); }
 
-  .bars-wrap { display: flex; align-items: flex-end; height: 130px; gap: 2px; }
-  .bar { border-radius: 2px 2px 0 0; flex-shrink: 0; }
+  .bars-wrap { display: flex; align-items: flex-end; height: 132px; gap: 2px; }
+  .bar { border-radius: 1.5px 1.5px 0 0; flex-shrink: 0; }
 
-  .empty-state { text-align: center; padding: 36px 20px; color: var(--faint); font-size: 13px; }
-  .empty-state-title { font-size: 14px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+  .empty-state { text-align: center; padding: 32px 20px; color: var(--faint); font-size: 12.5px; }
+  .empty-state-title { font-size: 13.5px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
 
   .upload-zone {
-    border: 1.5px dashed var(--border-strong); border-radius: 10px; padding: 26px;
-    text-align: center; background: #FAFBFD; transition: all 0.15s ease;
+    border: 1.5px dashed var(--border-strong); border-radius: 8px; padding: 24px 20px;
+    text-align: center; background: #FAFBFC; transition: border-color 0.15s ease, background 0.15s ease;
   }
   .upload-zone.drag { border-color: var(--accent); background: var(--accent-dim); }
 
+  /* ===== Contextual Validation & System Notices ===== */
   .callout {
-    display: flex; gap: 12px; padding: 13px 16px; border-radius: 8px; font-size: 12.5px; line-height: 1.55;
-    background: var(--accent-dim); border: 1px solid #C7D4F9; color: #2B4499;
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 11px 14px; border-radius: 6px; font-size: 12.5px; line-height: 1.5;
+    background: var(--accent-dim); border: 1px solid #CBD9F6; color: #1E3A8A;
   }
-  .callout.warn { background: var(--medium-dim); border-color: #F0D089; color: #7A5100; }
-  .callout.err { background: var(--lumpy-dim); border-color: #F2B8BA; color: #9F1D22; }
-  .callout.ok { background: var(--smooth-dim); border-color: #AEE4C4; color: #0E6B36; }
+  .callout.warn { background: var(--medium-dim); border-color: #F2D7A8; color: #7C3E06; }
+  .callout.err { background: var(--lumpy-dim); border-color: #EFC2C2; color: #991B1B; }
+  .callout-label {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 1px 6px; border-radius: 3px; flex-shrink: 0; margin-top: 2px;
+    background: rgba(255,255,255,0.65); border: 1px solid currentColor;
+  }
 
   .progress-track {
-    height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: 6px;
+    height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 6px;
   }
   .progress-fill {
     height: 100%; background: var(--accent); transition: width 0.25s ease;
@@ -222,88 +285,101 @@
   .progress-fill.err { background: var(--lumpy); }
 
   .spinner {
-    display: inline-block; width: 18px; height: 18px;
-    border: 2.5px solid var(--border-strong); border-top-color: var(--accent);
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid var(--border-strong); border-top-color: var(--accent);
     border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .toast {
-    position: fixed; bottom: 24px; right: 24px; background: var(--text); color: #fff;
-    padding: 12px 18px; border-radius: 8px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-    z-index: 50; opacity: 0; transform: translateY(8px); transition: all 0.25s ease; pointer-events: none;
+    position: fixed; bottom: 20px; right: 20px; background: var(--text); color: #fff;
+    padding: 11px 16px; border-radius: 6px; font-size: 12.5px; box-shadow: 0 6px 20px rgba(15,23,42,0.18);
+    z-index: 60; opacity: 0; transform: translateY(8px); transition: all 0.2s ease; pointer-events: none;
     max-width: 440px;
   }
   .toast.show { opacity: 1; transform: translateY(0); }
 
-  .tip { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%; background:var(--border); color:var(--muted); font-size:10px; font-weight:700; margin-left:7px; cursor:help; position:relative; vertical-align:middle; font-style:normal; }
-  .tip:hover::after, .tip:focus::after { content: attr(data-tip); position:absolute; left:-10px; top:130%; width:270px; background:var(--text); color:#fff; font-size:11.5px; font-weight:400; line-height:1.5; padding:9px 11px; border-radius:7px; z-index:40; white-space:normal; text-align:left; box-shadow:0 8px 24px rgba(0,0,0,.2); }
+  .tip { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%; background:var(--border); color:var(--muted); font-size:10px; font-weight:700; margin-left:6px; cursor:help; position:relative; vertical-align:middle; font-style:normal; }
+  .tip:hover::after, .tip:focus::after { content: attr(data-tip); position:absolute; left:-10px; top:135%; width:260px; background:var(--text); color:#fff; font-size:11.5px; font-weight:400; line-height:1.45; padding:8px 10px; border-radius:6px; z-index:40; white-space:normal; text-align:left; box-shadow:0 6px 18px rgba(15,23,42,.2); }
   details > summary { outline:none; }
+
+  .quad-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;
+  }
+  .quad-cell {
+    padding: 9px 10px; border-radius: 6px; border: 1px solid var(--border);
+    background: #FAFBFC; font-size: 11.5px; color: var(--muted);
+  }
+  .quad-cell.active {
+    background: var(--accent-dim); border-color: var(--accent); color: var(--text); font-weight: 600;
+  }
 
   /* ===== Auth Login Screen & Timeout Modal ===== */
   .auth-shell {
-    width: 100%; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(circle at top right, #EAEFFD 0%, var(--bg) 52%, #EEF2F8 100%);
-    padding: 20px;
+    width: 100%; height: 100vh; overflow-y: auto;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg); padding: 20px;
   }
   .auth-card {
-    width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--border);
-    border-radius: 14px; box-shadow: 0 12px 32px rgba(16,24,40,0.08), 0 2px 6px rgba(16,24,40,0.04);
-    padding: 34px 30px 28px;
+    width: 100%; max-width: 400px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    padding: 32px 28px 28px;
   }
   .auth-brand { text-align: center; margin-bottom: 24px; }
   .auth-logo {
-    width: 46px; height: 46px; margin: 0 auto 12px; border-radius: 12px;
-    background: linear-gradient(135deg, var(--accent) 0%, #2B4EC2 100%);
-    color: #fff; display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 17px; letter-spacing: -0.5px;
-    box-shadow: 0 6px 16px rgba(62,99,221,0.28);
+    width: 42px; height: 42px; margin: 0 auto 12px; border-radius: 8px;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 15px; letter-spacing: -0.3px;
   }
-  .auth-title { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; color: var(--text); }
+  .auth-title { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
   .auth-subtitle { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
   .auth-field-group { margin-bottom: 14px; }
   .pw-wrap { position: relative; display: flex; align-items: center; }
-  .pw-wrap input.field { width: 100%; padding-right: 42px; }
+  .pw-wrap input.field { width: 100%; padding-right: 40px; }
   .pw-toggle {
-    position: absolute; right: 8px; background: none; border: none; color: var(--muted);
+    position: absolute; right: 6px; background: none; border: none; color: var(--muted);
     padding: 5px 6px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center;
   }
   .pw-toggle:hover { color: var(--text); background: var(--bg); }
   .auth-alert {
-    padding: 10px 12px; border-radius: 8px; font-size: 12px; line-height: 1.5; margin-bottom: 14px;
+    padding: 10px 12px; border-radius: 6px; font-size: 12px; line-height: 1.5; margin-bottom: 14px;
     display: flex; gap: 8px; align-items: flex-start;
   }
-  .auth-alert.err { background: var(--lumpy-dim); border: 1px solid #F2B8BA; color: #9F1D22; }
-  .auth-alert.info { background: var(--accent-dim); border: 1px solid #C7D4F9; color: #2B4499; }
-  .auth-alert.warn { background: var(--medium-dim); border: 1px solid #F0D089; color: #7A5100; }
+  .auth-alert.err { background: var(--lumpy-dim); border: 1px solid #EFC2C2; color: #991B1B; }
+  .auth-alert.info { background: var(--accent-dim); border: 1px solid #CBD9F6; color: #1E3A8A; }
+  .auth-alert.warn { background: var(--medium-dim); border: 1px solid #F2D7A8; color: #7C3E06; }
   .auth-submit {
-    width: 100%; padding: 11px 16px; font-size: 13.5px; font-weight: 600;
+    width: 100%; padding: 10px 16px; font-size: 13px; font-weight: 600;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   }
-  .auth-meta {
-    margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border);
-    font-size: 11.5px; color: var(--faint); text-align: center; line-height: 1.55;
-  }
   .modal-backdrop {
-    position: fixed; inset: 0; background: rgba(16,24,40,0.48); z-index: 90;
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 90;
     display: none; align-items: center; justify-content: center; padding: 16px;
   }
   .modal-backdrop.open { display: flex; }
   .modal-box {
-    width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--border);
-    border-radius: 12px; padding: 24px; box-shadow: 0 18px 44px rgba(16,24,40,0.22);
+    width: 100%; max-width: 410px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 22px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
   }
 
   @media (max-width: 820px) {
-    #app { flex-direction: column; }
-    .nav { width:100%; border-right:none; border-bottom:1px solid var(--border); }
-    .nav-pages { flex-direction:row; overflow-x:auto; padding:8px; }
-    .nav-item { white-space:nowrap; width:auto; border-left:none; border-bottom:3px solid transparent; }
-    .nav-item.active { border-left:none; border-bottom:3px solid var(--accent); }
-    .nav-footer, .nav-brand-sub, .nav-workspace-pill { display:none; }
-    .nav-brand { padding:12px 16px; }
-    .topbar { padding:12px 16px; position:static; }
-    .content { padding:18px 14px 60px; }
+    #app { flex-direction: column; height: auto; min-height: 100vh; overflow: visible; }
+    .nav { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    .nav-scroll { padding: 8px 12px; overflow-x: auto; }
+    .nav-group { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 0; margin-right: 12px; }
+    .nav-group-label { display: none; }
+    .nav-pages { flex-direction: row; }
+    .nav-item { white-space: nowrap; width: auto; border-left: none; border-bottom: 2.5px solid transparent; }
+    .nav-item.active { border-left: none; border-bottom-color: var(--accent); }
+    .nav-dataset-meta, .nav-brand-sub { display: none; }
+    .nav-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; }
+    .nav-account-email { margin-bottom: 0; }
+    .nav-signout-btn { width: auto; }
+    .nav-brand { padding: 12px 16px; }
+    .main { height: auto; overflow-y: visible; }
+    .topbar { padding: 12px 16px; position: static; }
+    .content { padding: 18px 14px 48px; }
     .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
   }
 </style>
@@ -313,14 +389,14 @@
 <div class="toast" id="toast"></div>
 <div class="modal-backdrop" id="session-timeout-modal" role="dialog" aria-modal="true" aria-labelledby="timeout-modal-title">
   <div class="modal-box">
-    <div id="timeout-modal-title" style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;">Sesi Akan Segera Berakhir</div>
-    <div style="font-size:13px;color:var(--muted);line-height:1.55;">
-      Tidak terdeteksi aktivitas pada dashboard. Demi keamanan akun, Anda akan dikeluarkan otomatis dalam
+    <div id="timeout-modal-title" style="font-size:15.5px;font-weight:700;color:var(--text);margin-bottom:6px;">Sesi Akan Segera Berakhir</div>
+    <div style="font-size:12.5px;color:var(--muted);line-height:1.55;">
+      Tidak terdeteksi aktivitas pada dashboard. Demi keamanan akun, sesi akan berakhir otomatis dalam
       <strong class="mono" id="timeout-countdown" style="color:var(--lumpy);">02:00</strong>.
     </div>
     <div style="font-size:12px;color:var(--faint);margin-top:8px;">Seluruh dataset dan hasil analisis yang telah tersimpan tetap aman di akun Anda.</div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
-      <button class="btn-ghost" id="timeout-logout-btn">Keluar Sekarang</button>
+      <button class="btn-ghost" id="timeout-logout-btn">Sign Out</button>
       <button class="btn" id="timeout-extend-btn">Lanjutkan Sesi</button>
     </div>
   </div>
@@ -795,13 +871,14 @@ var state = {
   activeDatasetMeta: null,
   lastSelfActivatedDatasetId: null,
   datasets: [],            // Riwayat dataset milik UID dari Firestore onSnapshot
-  detailDatasetId: null,   // Dataset yang sedang dibuka detailnya di halaman Datasets
+  detailDatasetId: null,   // Dataset yang sedang dibuka detailnya di Data Management
   builtin: {},
   materials: {},
   selected: EXPECTED_CODES[0],
   filterClass: "Semua",
   searchQuery: "",
   pageLimit: 50,
+  prepNonZeroOnly: false,
   localPreviewOnly: false  // True hanya jika user menjalankan preview CSV offline tanpa backend
 };
 
@@ -840,6 +917,7 @@ function resetWorkspaceMemory() {
   bb.prog = null;
   bb.status = "";
   bb.color = "";
+  bb.validation = null;
   state.user = null;
   state.workspaceLoading = false;
   state.workspaceError = null;
@@ -852,6 +930,7 @@ function resetWorkspaceMemory() {
   state.selected = EXPECTED_CODES[0];
   state.filterClass = "Semua";
   state.searchQuery = "";
+  state.prepNonZeroOnly = false;
   state.localPreviewOnly = false;
 }
 
@@ -1264,16 +1343,19 @@ async function bbCheck() {
   bbPaint();
 }
 
-// Tahap 1: Upload & Validasi File Excel/CSV (menampilkan ringkasan validasi SEBELUM forecasting)
+// Tahap 1: Upload & Validasi Otomatis File Excel/CSV (Data Management)
 async function bbUploadAndValidate(file) {
   if (bb.busy || bb.uploading) {
     showToast("Proses sebelumnya masih berjalan.");
     return;
   }
-  var extOk = /\.(xlsx|xlsm|csv)$/i.test(file.name);
-  if (!extOk) {
+  var pre = SystemValidator.validateFilePreUpload(file);
+  if (pre.errors.length) {
+    bb.pendingUpload = null;
+    bb.report = null;
+    bb.validation = pre;
     bb.color = "var(--lumpy)";
-    bb.status = "Format file tidak didukung. Unggah file .xlsx, .xlsm, atau .csv.";
+    bb.status = "";
     bbPaint();
     return;
   }
@@ -1281,9 +1363,10 @@ async function bbUploadAndValidate(file) {
   bb.uploading = true;
   bb.pendingUpload = null;
   bb.report = null;
+  bb.validation = null;
   bb.prog = null;
   bb.color = "";
-  bb.status = "Mengunggah & memvalidasi struktur file " + file.name + "...";
+  bb.status = "Mengunggah dan memeriksa struktur file " + file.name + "...";
   bbPaint();
 
   try {
@@ -1292,15 +1375,28 @@ async function bbUploadAndValidate(file) {
     var up = await bbFetch("/upload", { method: "POST", body: fd });
     bb.pendingUpload = up;
     bb.report = up.report;
+    bb.validation = SystemValidator.validateDataManagement(up.report, file);
     bb.online = true;
-    bb.color = "var(--accent)";
-    bb.status = "Validasi selesai: terdeteksi " + up.report.n_materials + " material valid (" + up.report.period_min + " s.d. " + up.report.period_max + "). Periksa ringkasan di bawah lalu klik 'Jalankan Forecasting & Simpan ke Firebase'.";
+    bb.color = "var(--muted)";
+    bb.status = up.report.n_materials + " material (" + up.report.period_min + " s.d. " + up.report.period_max + ") siap diproses.";
     render();
   } catch (e) {
+    bb.validation = {
+      stage: "Data Management",
+      ok: false,
+      errors: [{
+        location: "Dataset Upload (" + file.name + ")",
+        cause: e.message || "Struktur file tidak memenuhi persyaratan dataset.",
+        impact: "Dataset tidak dapat diproses ke tahap Data Preparation maupun Demand Forecasting.",
+        action: "Pastikan file memiliki kolom wajib (Stock Code, periode YYYY-MM/tanggal, qty numerik >= 0) dan minimal 6 bulan data per material."
+      }],
+      warnings: []
+    };
+    SystemValidator.record("Data Management", bb.validation);
     bb.color = "var(--lumpy)";
-    bb.status = "Upload / validasi gagal: " + e.message;
+    bb.status = "";
     bbPaint();
-    showToast("Validasi file gagal.");
+    showToast("Pemeriksaan file menemukan kesalahan kritis.");
   } finally {
     bb.uploading = false;
   }
@@ -1309,6 +1405,10 @@ async function bbUploadAndValidate(file) {
 // Tahap 2: Jalankan Forecasting Asinkron & Simpan Permanen ke Firebase
 async function bbStartForecasting() {
   if (!bb.pendingUpload || bb.busy) return;
+  if (bb.validation && bb.validation.errors && bb.validation.errors.length) {
+    showToast("Selesaikan kesalahan kritis pada dataset sebelum menjalankan forecasting.");
+    return;
+  }
   var nameInput = document.getElementById("bb-dataset-name");
   var customName = nameInput ? nameInput.value.trim() : bb.pendingUpload.dataset_name;
   var uidAtStart = state.user ? state.user.uid : null;
@@ -1316,7 +1416,7 @@ async function bbStartForecasting() {
   bb.busy = true;
   bb.color = "";
   state.lastSelfActivatedDatasetId = bb.pendingUpload.dataset_id;
-  bb.status = "Menjalankan klasifikasi ADI/CV², grid search α/β & forecasting...";
+  bb.status = "Menjalankan klasifikasi ADI/CV², optimasi parameter α/β, evaluasi model, dan Demand Forecasting...";
   bb.prog = { done: 0, total: bb.pendingUpload.report.n_materials || 0, percent: 10, stage: "Memproses forecasting...", status: "forecasting", current: null };
   bbPaint();
 
@@ -1334,7 +1434,6 @@ async function bbStartForecasting() {
     var t0 = Date.now();
     var st = job;
     for (;;) {
-      // Hentikan polling jika pengguna logout atau ganti akun di tengah jalan
       if (!state.user || state.user.uid !== uidAtStart) {
         bb.busy = false;
         return;
@@ -1357,17 +1456,15 @@ async function bbStartForecasting() {
       if (st.status === "done") {
         if (st.saved_to_firebase) {
           bb.pendingUpload = null;
-          bb.color = "var(--smooth)";
-          bb.status = "Selesai! " + st.total + " material berhasil di-forecast dan tersimpan permanen ke Firebase. Dataset aktif otomatis diperbarui di seluruh perangkat.";
-          showToast("Forecasting selesai & tersimpan permanen ke Firebase (" + st.total + " material).");
-          // Muat dataset jika belum otomatis dimuat oleh onSnapshot
+          bb.color = "var(--muted)";
+          bb.status = "Pemrosesan selesai untuk " + st.total + " material. Dataset aktif telah diperbarui.";
+          showToast("Dataset selesai diproses dan tersimpan (" + st.total + " material).");
           if (state.activeDatasetId !== st.dataset_id || state.localPreviewOnly) {
             await loadDatasetFromFirestore(uidAtStart, st.dataset_id, false);
           } else {
             render();
           }
         } else {
-          // Mode lokal tanpa Firestore di backend: muat langsung dari /materials dengan peringatan eksplisit
           var all = await bbFetch("/materials?full=true");
           var fresh = {};
           (all.materials || []).forEach(function (it) {
@@ -1381,15 +1478,15 @@ async function bbStartForecasting() {
           state.localPreviewOnly = true;
           bb.pendingUpload = null;
           bb.color = "var(--medium)";
-          bb.status = "Forecasting selesai (" + st.total + " material), NAMUN backend belum terhubung ke Firebase Admin SDK sehingga hasil BELUM tersimpan permanen ke Firestore.";
-          showToast("Peringatan: hasil belum tersimpan ke Firebase (Firestore backend belum aktif).");
+          bb.status = "Forecasting selesai (" + st.total + " material), namun mode preview lokal tidak menyimpan data permanen.";
+          showToast("Perhatian: hasil berjalan pada mode preview lokal.");
           render();
         }
         break;
       }
 
       if (st.status === "error") {
-        throw new Error(st.error || "Terjadi kegagalan saat menjalankan forecasting di backend.");
+        throw new Error(st.error || "Terjadi kegagalan saat menjalankan forecasting.");
       }
 
       if (Date.now() - t0 > 30 * 60 * 1000) {
@@ -1402,11 +1499,23 @@ async function bbStartForecasting() {
       });
     }
   } catch (err) {
+    bb.validation = {
+      stage: "Demand Forecasting",
+      ok: false,
+      errors: [{
+        location: "Forecasting Job Execution",
+        cause: err.message || "Terjadi kegagalan komputasi pada server.",
+        impact: "Dataset baru gagal disimpan; dataset aktif sebelumnya tetap dipertahankan tanpa perubahan.",
+        action: "Periksa koneksi internet dan integritas file sumber, lalu ulangi proses upload."
+      }],
+      warnings: []
+    };
+    SystemValidator.record("Forecasting Execution", bb.validation);
     bb.color = "var(--lumpy)";
-    bb.status = "Gagal: " + err.message + " Dataset aktif sebelumnya tetap dipertahankan.";
+    bb.status = "";
     if (bb.prog) bb.prog.status = "error";
     bbPaint();
-    showToast("Proses forecasting gagal. Dataset aktif sebelumnya aman.");
+    showToast("Proses forecasting gagal. Dataset aktif sebelumnya tetap aman.");
   } finally {
     bb.busy = false;
     bb.pollTimer = null;
@@ -1417,14 +1526,14 @@ function bbPaint() {
   var pill = document.getElementById("bb-conn-pill");
   if (pill) {
     if (bb.online === true) {
-      pill.className = "badge badge-active";
-      pill.innerHTML = '<span class="badge-dot" style="background:var(--smooth);"></span>Terkoneksi';
+      pill.className = "tag tag-muted";
+      pill.innerHTML = '<span class="tag-dot" style="background:var(--smooth);"></span>Service Online';
     } else if (bb.online === false) {
-      pill.className = "badge badge-error";
-      pill.innerHTML = '<span class="badge-dot" style="background:var(--lumpy);"></span>Terputus';
+      pill.className = "tag tag-error";
+      pill.innerHTML = '<span class="tag-dot" style="background:var(--lumpy);"></span>Service Unavailable';
     } else {
-      pill.className = "badge badge-history";
-      pill.innerHTML = '<span class="badge-dot" style="background:var(--muted);"></span>Menghubungkan...';
+      pill.className = "tag tag-muted";
+      pill.innerHTML = '<span class="tag-dot" style="background:var(--faint);"></span>Checking Service...';
     }
   }
   var retryWrap = document.getElementById("bb-check");
@@ -1442,7 +1551,7 @@ function bbPaint() {
   if (pr) {
     if (bb.prog) {
       pr.style.display = "block";
-      var curTxt = bb.prog.current ? " — Sedang diproses: " + esc(bb.prog.current.code) + " (" + esc(bb.prog.current.name) + ")" : "";
+      var curTxt = bb.prog.current ? " — " + esc(bb.prog.current.code) + " (" + esc(bb.prog.current.name) + ")" : "";
       var fillCls = bb.prog.status === "done" ? "done" : bb.prog.status === "saving" ? "saving" : bb.prog.status === "error" ? "err" : "";
       pr.innerHTML =
         '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);gap:10px;flex-wrap:wrap;">' +
@@ -1457,43 +1566,46 @@ function bbPaint() {
 
   var rep = document.getElementById("bb-report");
   if (rep) {
+    var feedbackHtml = bb.validation ? renderValidationFeedback(bb.validation) : "";
     var r = bb.report;
-    if (!r) {
+    if (!r && !feedbackHtml) {
       rep.innerHTML = "";
     } else {
-      var confirmBox = bb.pendingUpload
-        ? '<div style="margin-top:14px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">' +
+      var hasCritical = !!(bb.validation && bb.validation.errors && bb.validation.errors.length);
+      var confirmBox = (bb.pendingUpload && !hasCritical)
+        ? '<div style="margin-top:14px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">' +
             '<div style="flex:1;min-width:220px;">' +
-              '<label class="field-label" for="bb-dataset-name">Nama Dataset (disimpan di History akun Anda)</label>' +
+              '<label class="field-label" for="bb-dataset-name">Dataset Name</label>' +
               '<input class="field" id="bb-dataset-name" style="width:100%;" value="' + esc(bb.pendingUpload.dataset_name || "") + '" maxlength="120">' +
             '</div>' +
-            '<button class="btn" id="bb-run-btn"' + (bb.busy ? ' disabled' : '') + '>Jalankan Forecasting &amp; Simpan ke Firebase</button>' +
-            '<button class="btn-ghost" id="bb-cancel-btn"' + (bb.busy ? ' disabled' : '') + '>Batal</button>' +
+            '<button class="btn" id="bb-run-btn"' + (bb.busy ? ' disabled' : '') + '>Run Demand Forecasting</button>' +
+            '<button class="btn-ghost" id="bb-cancel-btn"' + (bb.busy ? ' disabled' : '') + '>Cancel</button>' +
           '</div>'
         : "";
 
+      var summaryTable = r
+        ? '<div style="margin-top:12px;overflow-x:auto;">' +
+            '<table class="data-table">' +
+              '<thead><tr><th>Parameter</th><th>Detected Value</th></tr></thead><tbody>' +
+              [
+                ["Source File", esc(r.filename) + " (" + esc(r.source) + ")"],
+                ["Rows Read / Valid", r.rows_total + " / " + r.rows_valid],
+                ["Valid Materials", "<strong>" + r.n_materials + " materials</strong>"],
+                ["Historical Period Range", esc(r.period_min) + " &ndash; " + esc(r.period_max)],
+                ["Evaluation Split (&gt;60 mo / &le;60 mo)", (r.eval_traintest_count || 0) + " Train/Test 50:50 &middot; " + (r.eval_lastdemand_count || 0) + " Last Actual Demand"],
+                ["Duplicate Records Aggregated", r.duplicates_summed],
+                ["Missing Months Zero-Filled", r.months_filled_zero],
+                ["Rejected Rows (Code/Period / Qty)", r.rejected_bad_code_or_month + " / " + r.rejected_bad_qty]
+              ].map(function (x) {
+                return '<tr><td>' + x[0] + '</td><td class="mono">' + x[1] + '</td></tr>';
+              }).join("") +
+              '</tbody></table></div>'
+        : "";
+
       rep.innerHTML =
-        '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">' +
-          '<div style="font-size:13.5px;font-weight:700;margin-bottom:8px;">Ringkasan Validasi File</div>' +
-          '<table style="width:100%;font-size:12.5px;border-collapse:collapse;">' +
-            '<tr style="text-align:left;color:var(--muted);"><th style="padding:5px 0;">Pemeriksaan</th><th>Hasil</th></tr>' +
-            [
-              ["File & Sumber", esc(r.filename) + " (" + esc(r.source) + ")"],
-              ["Total baris dibaca / valid", r.rows_total + " / " + r.rows_valid],
-              ["Jumlah material terdeteksi otomatis", "<strong>" + r.n_materials + " material</strong>"],
-              ["Rentang periode data", esc(r.period_min) + " s.d. " + esc(r.period_max)],
-              ["Aturan evaluasi (>60 bln / &le;60 bln)", (r.eval_traintest_count || 0) + " Train/Test 50:50 &middot; " + (r.eval_lastdemand_count || 0) + " Demand Aktual Terakhir"],
-              ["Transaksi duplikat dijumlahkan", r.duplicates_summed],
-              ["Bulan kosong diisi 0", r.months_filled_zero],
-              ["Baris ditolak (kode/bulan / qty)", r.rejected_bad_code_or_month + " / " + r.rejected_bad_qty],
-              ["Material dilewati (&lt;6 bln / semua 0)", r.skipped_materials && r.skipped_materials.length ? esc(r.skipped_materials.slice(0, 12).join(", ")) : "0"]
-            ].map(function (x) {
-              return '<tr style="border-top:1px solid var(--border);"><td style="padding:5px 0;">' + x[0] + '</td><td class="mono">' + x[1] + '</td></tr>';
-            }).join("") +
-          '</table>' +
-          (r.warnings || []).map(function (w) {
-            return '<div class="callout warn" style="margin-top:8px;"><span>&#9888;</span><span>' + esc(w) + '</span></div>';
-          }).join("") +
+        '<div style="margin-top:12px;">' +
+          feedbackHtml +
+          summaryTable +
           confirmBox +
         '</div>';
 
@@ -1501,10 +1613,360 @@ function bbPaint() {
       if (runBtn) runBtn.addEventListener("click", bbStartForecasting);
       var cancelBtn = document.getElementById("bb-cancel-btn");
       if (cancelBtn) cancelBtn.addEventListener("click", function () {
-        bb.pendingUpload = null; bb.report = null; bb.status = "Upload dibatalkan."; bb.color = "var(--muted)"; bbPaint();
+        bb.pendingUpload = null; bb.report = null; bb.validation = null; bb.status = ""; bbPaint(); render();
       });
     }
   }
+}
+
+/* ============================================================
+   INTEGRATED AUTOMATIC SYSTEM VALIDATION & DIAGNOSTIC LOGS
+   - Dijalankan otomatis pada Data Management, Data Preparation,
+     Material Analysis, dan Demand Forecasting.
+   - Tidak membanjiri UI dengan centang hijau bila data valid.
+   - Mencatat jejak audit internal ke window.__DSA_VALIDATION_LOG__.
+   ============================================================ */
+var SystemValidator = (function () {
+  var logs = [];
+  window.__DSA_VALIDATION_LOG__ = logs;
+  window.getValidationAuditLog = function () { return logs.slice(); };
+
+  function record(stage, result) {
+    var entry = {
+      timestamp: new Date().toISOString(),
+      stage: stage,
+      ok: result.errors.length === 0,
+      errorCount: result.errors.length,
+      warningCount: result.warnings.length,
+      errors: result.errors,
+      warnings: result.warnings
+    };
+    logs.push(entry);
+    if (logs.length > 200) logs.shift();
+    if (result.errors.length > 0 && typeof console !== "undefined" && console.error) {
+      console.error("[Dead Stock Analytics Validation]", stage, entry);
+    }
+    return result;
+  }
+
+  function validateFilePreUpload(file) {
+    var errors = [], warnings = [];
+    if (!file) {
+      errors.push({
+        location: "Dataset Upload",
+        cause: "Tidak ada file yang dipilih.",
+        impact: "Proses upload tidak dapat dimulai.",
+        action: "Pilih file Excel (.xlsx, .xlsm) atau CSV (.csv) yang berisi riwayat demand material."
+      });
+    } else {
+      if (!/\.(xlsx|xlsm|csv)$/i.test(file.name)) {
+        errors.push({
+          location: "Dataset Upload (" + file.name + ")",
+          cause: "Format file tidak didukung oleh parser.",
+          impact: "Sistem tidak dapat membaca kolom Stock Code, periode, dan demand.",
+          action: "Konversi atau simpan ulang file ke format .xlsx, .xlsm, atau .csv."
+        });
+      }
+      if (file.size === 0) {
+        errors.push({
+          location: "Dataset Upload (" + file.name + ")",
+          cause: "File kosong (0 bytes).",
+          impact: "Tidak ada data historis yang dapat dianalisis.",
+          action: "Unggah file dataset yang berisi minimal 1 material dengan >= 6 bulan data."
+        });
+      } else if (file.size > 25 * 1024 * 1024) {
+        warnings.push({
+          location: "Dataset Upload (" + file.name + ")",
+          detail: "Ukuran file cukup besar (" + fmtNum(file.size / (1024 * 1024), 2) + " MB).",
+          impact: "Waktu upload dan pemrosesan forecasting mungkin membutuhkan beberapa saat lebih lama."
+        });
+      }
+    }
+    return record("Data Management (Pre-Upload)", { stage: "Data Management", ok: errors.length === 0, errors: errors, warnings: warnings });
+  }
+
+  function validateDataManagement(report, file) {
+    var errors = [], warnings = [];
+    var loc = "Data Management (" + (report && report.filename ? report.filename : (file ? file.name : "Dataset")) + ")";
+    if (!report) {
+      errors.push({
+        location: loc,
+        cause: "Laporan validasi struktur dataset tidak diterima dari server.",
+        impact: "Validitas kolom wajib dan jumlah material tidak dapat dipastikan.",
+        action: "Ulangi proses upload file."
+      });
+      return record("Data Management", { stage: "Data Management", ok: false, errors: errors, warnings: warnings });
+    }
+    if (!report.n_materials || report.n_materials <= 0) {
+      errors.push({
+        location: loc,
+        cause: "Tidak ditemukan material valid (minimal 6 bulan data dan >= 1 demand > 0).",
+        impact: "Forecasting dihentikan karena tidak ada deret waktu yang memenuhi syarat.",
+        action: "Periksa kolom Stock Code, format tanggal/bulan (YYYY-MM), dan nilai Qty numerik pada file sumber."
+      });
+    }
+    var badRows = (report.rejected_bad_code_or_month || 0) + (report.rejected_bad_qty || 0);
+    if (badRows > 0) {
+      warnings.push({
+        location: loc,
+        detail: badRows + " baris ditolak (kode/periode tidak valid: " + (report.rejected_bad_code_or_month || 0) + ", qty tidak valid: " + (report.rejected_bad_qty || 0) + ").",
+        impact: "Baris bermasalah dilewati secara otomatis agar tidak merusak agregasi bulanan."
+      });
+    }
+    if (report.skipped_materials && report.skipped_materials.length > 0) {
+      warnings.push({
+        location: loc,
+        detail: report.skipped_materials.length + " material dilewati (< 6 bulan historis atau seluruh demand = 0): " + report.skipped_materials.slice(0, 8).join(", ") + (report.skipped_materials.length > 8 ? " ..." : "") + ".",
+        impact: "Material tersebut dikecualikan dari optimasi parameter dan proyeksi permintaan."
+      });
+    }
+    return record("Data Management", { stage: "Data Management", ok: errors.length === 0, errors: errors, warnings: warnings });
+  }
+
+  function validateDataPreparation(materialsMap) {
+    var errors = [], warnings = [];
+    var keys = Object.keys(materialsMap || {});
+    if (!keys.length) {
+      errors.push({
+        location: "Data Preparation",
+        cause: "Tidak ada dataset aktif yang termuat pada workspace.",
+        impact: "Agregasi bulanan dan processed dataset tidak tersedia.",
+        action: "Aktifkan dataset tersimpan atau unggah file baru pada halaman Data Management."
+      });
+      return record("Data Preparation", { stage: "Data Preparation", ok: false, errors: errors, warnings: warnings });
+    }
+
+    var gapMaterials = [], orderErrors = [], negErrors = [], shortMaterials = [];
+    keys.forEach(function (code) {
+      var m = materialsMap[code];
+      var rows = (m && m.data) || [];
+      if (rows.length < 6) shortMaterials.push(code);
+      for (var i = 0; i < rows.length; i++) {
+        var qty = Number(rows[i][1]);
+        if (!isFinite(qty) || qty < 0) {
+          negErrors.push(code + " (" + rows[i][0] + ")");
+          break;
+        }
+        if (i > 0) {
+          var diff = monthToIndex(rows[i][0]) - monthToIndex(rows[i - 1][0]);
+          if (diff <= 0) { orderErrors.push(code); break; }
+          if (diff > 1) { gapMaterials.push(code); break; }
+        }
+      }
+    });
+
+    if (orderErrors.length) {
+      errors.push({
+        location: "Data Preparation / Chronological Ordering",
+        cause: "Urutan bulan tidak kronologis atau terdapat bulan duplikat pada " + orderErrors.length + " material (" + orderErrors.slice(0, 5).join(", ") + ").",
+        impact: "Perhitungan interval demand (ADI) dan smoothing state Croston/SBA/TSB menjadi tidak valid.",
+        action: "Unggah ulang dataset melalui Data Management agar agregasi bulanan dan pengurutan dijalankan ulang."
+      });
+    }
+    if (negErrors.length) {
+      errors.push({
+        location: "Data Preparation / Demand Values",
+        cause: "Ditemukan nilai demand negatif atau non-numerik pada " + negErrors.slice(0, 5).join(", ") + ".",
+        impact: "Perhitungan CV², MASE, dan proyeksi permintaan terganggu.",
+        action: "Bersihkan nilai negatif atau teks pada kolom Qty file sumber lalu unggah ulang."
+      });
+    }
+    if (gapMaterials.length) {
+      warnings.push({
+        location: "Data Preparation / Monthly Aggregation",
+        detail: "Terdeteksi celah bulan kosong (belum terisi 0) pada " + gapMaterials.length + " material (" + gapMaterials.slice(0, 5).join(", ") + ").",
+        impact: "Interval antar-permintaan (ADI) dapat sedikit terpengaruh bila bulan tanpa transaksi tidak direpresentasikan sebagai 0."
+      });
+    }
+    if (shortMaterials.length) {
+      warnings.push({
+        location: "Data Preparation / Series Length",
+        detail: shortMaterials.length + " material memiliki panjang historis < 6 bulan.",
+        impact: "Evaluasi out-of-sample mungkin terbatas untuk material berderet pendek."
+      });
+    }
+    return record("Data Preparation", { stage: "Data Preparation", ok: errors.length === 0, errors: errors, warnings: warnings });
+  }
+
+  function validateMaterialAnalysis(code, m) {
+    var errors = [], warnings = [];
+    var loc = "Material Analysis (" + code + ")";
+    if (!m || !m.data || !m.data.length) {
+      errors.push({
+        location: loc,
+        cause: "Data historis material tidak ditemukan.",
+        impact: "Analisis karakteristik dan model tidak dapat ditampilkan.",
+        action: "Pilih material lain atau muat ulang dataset aktif."
+      });
+      return record("Material Analysis", { stage: "Material Analysis", ok: false, errors: errors, warnings: warnings });
+    }
+
+    // 1. Cek konsistensi ADI/CV² dengan Syntetos-Boylan classification
+    if (m.adi !== null && m.cv2 !== null && isFinite(m.adi) && isFinite(m.cv2)) {
+      var expectedCls = m.adi > 1.32 && m.cv2 > 0.49 ? "Lumpy"
+        : m.adi > 1.32 ? "Intermittent"
+        : m.cv2 > 0.49 ? "Erratic" : "Smooth";
+      if (m.classification !== expectedCls) {
+        warnings.push({
+          location: loc + " / Demand Classification",
+          detail: "Klasifikasi tersimpan (" + m.classification + ") berbeda dengan ambang batas ADI/CV² (" + expectedCls + ").",
+          impact: "Periksa apakah material berasal dari baseline override atau dataset eksternal."
+        });
+      }
+    }
+
+    // 2. Cek batas parameter optimasi [0.0001, 1.0000]
+    var params = [["Croston α", m.alphaC], ["SBA α", m.alphaS], ["TSB β", m.betaT]];
+    params.forEach(function (p) {
+      if (!isFinite(p[1]) || p[1] < 0.00009 || p[1] > 1.00001) {
+        errors.push({
+          location: loc + " / Parameter Optimization",
+          cause: "Parameter " + p[0] + " (" + p[1] + ") berada di luar rentang grid search 0,0001–1,0000.",
+          impact: "Hasil smoothing dan proyeksi untuk model terkait tidak valid.",
+          action: "Jalankan ulang pemrosesan dataset melalui Data Management."
+        });
+      }
+    });
+
+    // 3. Cek kelengkapan metrik error & seleksi bestModel berbasis MASE terendah
+    var methods = ["Croston", "SBA", "TSB"];
+    var lowestMethod = null, lowestMase = Infinity;
+    methods.forEach(function (k) {
+      var met = m.metrics && m.metrics[k];
+      if (!met || !isFinite(met.mse) || !isFinite(met.mad) || !isFinite(met.mase) || met.mse < 0 || met.mad < 0) {
+        errors.push({
+          location: loc + " / Model Performance (" + k + ")",
+          cause: "Metrik error tidak lengkap atau tidak valid pada model " + k + ".",
+          impact: "Perbandingan kinerja model tidak dapat diverifikasi.",
+          action: "Muat ulang atau proses ulang dataset."
+        });
+      } else if (met.mase < lowestMase) {
+        lowestMase = met.mase;
+        lowestMethod = k;
+      }
+    });
+    if (lowestMethod && m.bestMethod !== lowestMethod && Math.abs((m.metrics[m.bestMethod] ? m.metrics[m.bestMethod].mase : Infinity) - lowestMase) > 1e-6) {
+      warnings.push({
+        location: loc + " / Selected Forecasting Model",
+        detail: "Model terpilih (" + m.bestMethod + ") bukan pemilik MASE terendah (" + lowestMethod + ").",
+        impact: "Pastikan pemilihan model konsisten dengan kriteria evaluasi MASE terendah."
+      });
+    }
+
+    return record("Material Analysis", { stage: "Material Analysis", ok: errors.length === 0, errors: errors, warnings: warnings });
+  }
+
+  function validateDemandForecasting(materialsMap) {
+    var errors = [], warnings = [];
+    var keys = Object.keys(materialsMap || {});
+    var badHorizon = [], badPeriods = [], badQty = [], noMethod = [];
+
+    keys.forEach(function (code) {
+      var m = materialsMap[code];
+      if (!m || !m.data || !m.data.length) return;
+      if (!m.bestMethod || ["Croston", "SBA", "TSB"].indexOf(m.bestMethod) < 0) noMethod.push(code);
+      if (!isFinite(m.horizonMonths) || m.horizonMonths <= 0) badHorizon.push(code);
+
+      var lastIdx = monthToIndex(m.data[m.data.length - 1][0]);
+      var maxIdx = lastIdx + (m.horizonMonths || m.data.length);
+      var preds = m.predictions || [];
+      for (var i = 0; i < preds.length; i++) {
+        var pIdx = monthToIndex(preds[i][0]);
+        var q = Number(preds[i][1]);
+        if (!isFinite(pIdx) || pIdx <= lastIdx || pIdx > maxIdx) { badPeriods.push(code); break; }
+        if (!isFinite(q) || q <= 0) { badQty.push(code); break; }
+      }
+    });
+
+    if (noMethod.length) {
+      errors.push({
+        location: "Demand Forecasting / Model Alignment",
+        cause: "Metode forecasting tidak valid pada " + noMethod.length + " material (" + noMethod.slice(0, 5).join(", ") + ").",
+        impact: "Proyeksi tidak dapat ditelusuri ke model dan parameter optimasinya.",
+        action: "Proses ulang dataset di halaman Data Management."
+      });
+    }
+    if (badHorizon.length) {
+      errors.push({
+        location: "Demand Forecasting / Forecast Horizon",
+        cause: "Horizon forecast tidak valid pada " + badHorizon.slice(0, 5).join(", ") + ".",
+        impact: "Rentang periode proyeksi tidak dapat ditentukan secara akurat.",
+        action: "Proses ulang dataset di halaman Data Management."
+      });
+    }
+    if (badPeriods.length) {
+      errors.push({
+        location: "Demand Forecasting / Forecast Period",
+        cause: "Periode proyeksi berada di luar rentang pasca-historis pada " + badPeriods.slice(0, 5).join(", ") + ".",
+        impact: "Jadwal proyeksi tumpang tindih dengan data historis atau melebihi horizon.",
+        action: "Proses ulang dataset agar tanggal proyeksi dibangun ulang dari akhir periode historis."
+      });
+    }
+    if (badQty.length) {
+      errors.push({
+        location: "Demand Forecasting / Forecast Values",
+        cause: "Ditemukan kuantitas proyeksi tidak valid (<= 0 atau NaN) pada " + badQty.slice(0, 5).join(", ") + ".",
+        impact: "Nilai kebutuhan material tidak dapat digunakan untuk perencanaan.",
+        action: "Periksa data historis material terkait dan proses ulang."
+      });
+    }
+    return record("Demand Forecasting", { stage: "Demand Forecasting", ok: errors.length === 0, errors: errors, warnings: warnings });
+  }
+
+  return {
+    record: record,
+    validateFilePreUpload: validateFilePreUpload,
+    validateDataManagement: validateDataManagement,
+    validateDataPreparation: validateDataPreparation,
+    validateMaterialAnalysis: validateMaterialAnalysis,
+    validateDemandForecasting: validateDemandForecasting
+  };
+})();
+
+function renderValidationFeedback(res) {
+  if (!res || ((!res.errors || !res.errors.length) && (!res.warnings || !res.warnings.length))) return "";
+  var html = "";
+  (res.errors || []).forEach(function (e) {
+    html +=
+      '<div class="callout err" style="margin-bottom:10px;" role="alert">' +
+        '<span class="callout-label">Error</span>' +
+        '<div>' +
+          '<div style="font-weight:700;margin-bottom:2px;">' + esc(e.location) + '</div>' +
+          '<div><strong>Penyebab:</strong> ' + esc(e.cause) + '</div>' +
+          '<div><strong>Dampak:</strong> ' + esc(e.impact) + '</div>' +
+          '<div><strong>Tindakan:</strong> ' + esc(e.action) + '</div>' +
+        '</div>' +
+      '</div>';
+  });
+  (res.warnings || []).forEach(function (w) {
+    html +=
+      '<div class="callout warn" style="margin-bottom:10px;" role="status">' +
+        '<span class="callout-label">Warning</span>' +
+        '<div>' +
+          '<div style="font-weight:600;">' + esc(w.location) + '</div>' +
+          '<div>' + esc(w.detail) + (w.impact ? ' ' + esc(w.impact) : '') + '</div>' +
+        '</div>' +
+      '</div>';
+  });
+  return html;
+}
+
+function downloadCsvFile(filename, headers, rows) {
+  var csvEsc = function (v) {
+    var s = String(v == null ? "" : v);
+    var needsQuote = s.indexOf(",") >= 0 || s.indexOf('"') >= 0 || s.indexOf("\n") >= 0 || s.indexOf("\r") >= 0;
+    return needsQuote ? '"' + s.split('"').join('""') + '"' : s;
+  };
+  var lines = [headers.map(csvEsc).join(",")].concat(rows.map(function (r) { return r.map(csvEsc).join(","); }));
+  var blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
 }
 
 /* ============================================================
@@ -1553,13 +2015,24 @@ function metricRow(label, value, bold) {
 function pctFmt(v) { return v === null || v === undefined || isNaN(v) ? "n/a" : fmtNum(v, 2) + "%"; }
 function spanText(N) { var y = Math.floor(N / 12), mo = N % 12; return y + " tahun" + (mo ? " " + mo + " bulan" : "") + " (" + N + " bulan)"; }
 
-var T_STAT = "Statistical Forecast: hasil proyeksi berdasarkan pola demand historis menggunakan metode intermittent-demand forecasting (Croston/SBA/TSB) terverifikasi Excel.";
-var T_EXCEL = "Baseline awal diambil dari file Excel 8 material uji. Dataset baru dihitung otomatis menggunakan rumus Excel terverifikasi dan disimpan permanen di akun Anda.";
+var T_PROJECTION = "Demand Projection: proyeksi kejadian permintaan ke depan berdasarkan pola demand historis menggunakan model intermittent-demand terpilih (Croston, SBA, atau TSB).";
+var T_METHOD = "Parameter dioptimasi melalui grid search 0,0001–1,0000 (minimum one-step-ahead MSE) dan model terbaik dipilih berdasarkan MASE in-sample terendah.";
+
+function navIcon(id) {
+  var icons = {
+    "overview": '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+    "data-management": '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>',
+    "data-preparation": '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+    "material-analysis": '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+    "demand-forecasting": '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>'
+  };
+  return icons[id] || "";
+}
 
 function materialSelector() {
   var allCodes = codes();
   return (
-    '<select class="filter-select" data-action="change-material">' +
+    '<select class="filter-select" data-action="change-material" aria-label="Pilih Material">' +
       allCodes.map(function (c) {
         return '<option value="' + esc(c) + '"' + (c === state.selected ? ' selected' : '') + '>' + esc(c) + ' — ' + esc(state.materials[c].name) + '</option>';
       }).join('') +
@@ -1567,15 +2040,17 @@ function materialSelector() {
   );
 }
 
-function statTableFor(code) {
+// Single source of truth untuk tabel proyeksi permintaan material terpilih
+// Dipakai bersama oleh Material Analysis (Demand Projection) & Demand Forecasting (Material Demand Projection)
+function projectionTableFor(code) {
   var m = state.materials[code], p = (m && m.predictions) || [];
   if (!p.length) return emptyBox("Tidak ada kejadian demand diprediksi pada horizon ini", "");
-  return tbl(["Month", "Forecast Qty", "Method"], p.map(function (x) {
+  return tbl(["Period", "Projected Quantity", "Selected Model"], p.map(function (x) {
     return tr([fmtMonth(x[0]), '<span class="mono" style="font-weight:600;">' + fmtNum(x[1], 4) + '</span>', esc(m.bestMethod)]);
   }));
 }
 
-function allForecastTable() {
+function forecastResultsTable() {
   var q = state.searchQuery.trim().toLowerCase();
   var summaryRows = [];
   var detailRows = [];
@@ -1591,18 +2066,18 @@ function allForecastTable() {
     var isSel = c === state.selected;
 
     summaryRows.push(
-      '<tr class="clickable" data-action="select-forecast" data-code="' + esc(c) + '"' + (isSel ? ' style="background:var(--accent-dim);"' : '') + '>' +
+      '<tr class="clickable' + (isSel ? ' row-selected' : '') + '" data-action="select-forecast" data-code="' + esc(c) + '">' +
         '<td class="mono" style="font-weight:600;">' + esc(c) + '</td>' +
         '<td>' + esc(m.name) + '</td>' +
         '<td style="font-weight:600;">' + esc(m.bestMethod) + '</td>' +
         '<td>' + (nextMo ? fmtMonth(nextMo) : '-') + '</td>' +
         '<td class="mono" style="font-weight:600;">' + fmtNum(nextQty, 4) + '</td>' +
-        '<td class="mono">' + (m.interval ? fmtNum(m.interval, 2) + ' bln' : '-') + '</td>' +
-        '<td class="mono">' + preds.length + ' kejadian</td>' +
+        '<td class="mono">' + (m.interval ? fmtNum(m.interval, 2) + ' mo' : '-') + '</td>' +
+        '<td class="mono">' + preds.length + '</td>' +
         '<td class="mono">' + fmtNum(m.metrics[m.bestMethod].mase, 4) + '</td>' +
         '<td class="mono">' + fmtNum(m.adi, 2) + '</td>' +
         '<td class="mono">' + fmtNum(m.cv2, 3) + '</td>' +
-        '<td><span class="badge" style="background:var(--' + cv + '-dim);color:var(--' + cv + ');"><span class="badge-dot" style="background:var(--' + cv + ');"></span>' + esc(m.classification) + '</span></td>' +
+        '<td><span class="tag" style="background:var(--' + cv + '-dim);color:var(--' + cv + ');"><span class="tag-dot" style="background:var(--' + cv + ');"></span>' + esc(m.classification) + '</span></td>' +
       '</tr>'
     );
 
@@ -1617,19 +2092,19 @@ function allForecastTable() {
     });
   });
 
-  if (!summaryRows.length) return emptyBox("Tidak ada material yang cocok dengan pencarian", "");
+  if (!summaryRows.length) return emptyBox("Tidak ada material yang sesuai pencarian", "");
 
   var summaryHtml =
-    '<div style="max-height:460px;overflow:auto;border-radius:10px;">' +
-      tbl(["Stock Code", "Material", "Best Method", "Prediksi Berikutnya", "Qty / Kejadian", "Interval", "Total Kejadian", "MASE", "ADI", "CV&sup2;", "Classification"], summaryRows) +
+    '<div style="max-height:460px;overflow:auto;border-radius:8px;">' +
+      tbl(["Stock Code", "Material", "Selected Model", "Next Projected Period", "Projected Qty", "Avg Interval", "Events", "MASE", "ADI", "CV&sup2;", "Classification"], summaryRows) +
     '</div>' +
-    '<div style="font-size:11.5px;color:var(--faint);margin-top:8px;">Menampilkan <strong>' + summaryRows.length + ' material unik</strong> (1 baris per material). Klik baris mana saja untuk melihat grafik &amp; jadwal lengkap bulanannya di atas.</div>';
+    '<div style="font-size:11.5px;color:var(--faint);margin-top:8px;">Menampilkan <strong>' + summaryRows.length + ' material unik</strong> (1 baris per material). Pilih baris untuk melihat grafik dan jadwal proyeksi lengkap pada Material Demand Projection.</div>';
 
   var detailHtml = detailRows.length
     ? '<details class="card" style="margin-top:12px;">' +
-        '<summary style="font-weight:600;font-size:13px;cursor:pointer;color:var(--muted);">Lihat rincian jadwal semua kejadian per bulan (' + detailRows.length + ' kejadian)</summary>' +
-        '<div style="margin-top:12px;max-height:360px;overflow:auto;border-radius:8px;">' +
-          tbl(["Stock Code", "Material", "Bulan Prediksi", "Forecast Qty", "Method"], detailRows.slice(0, 500)) +
+        '<summary style="font-weight:600;font-size:12.5px;cursor:pointer;color:var(--muted);">Rincian seluruh kejadian proyeksi per bulan (' + detailRows.length + ' kejadian)</summary>' +
+        '<div style="margin-top:10px;max-height:360px;overflow:auto;border-radius:6px;">' +
+          tbl(["Stock Code", "Material", "Period", "Projected Quantity", "Selected Model"], detailRows.slice(0, 500)) +
         '</div>' +
       '</details>'
     : '';
@@ -1638,62 +2113,80 @@ function allForecastTable() {
 }
 
 /* ============================================================
-   RENDER: NAV & ACTIVE WORKSPACE HEADER
+   RENDER: FIXED SIDEBAR NAVIGATION (5 MENU IN 2 GROUPS)
    ============================================================ */
 function renderNav() {
-  var histCount = state.datasets.length;
-  var pages = [
-    { id: "overview", label: "Overview", badge: codes().length },
-    { id: "material", label: "Material Analysis" },
-    { id: "forecast", label: "Statistical Forecast" },
-    { id: "data", label: "Upload &amp; Proses" },
-    { id: "datasets", label: "Datasets &amp; History", badge: histCount },
-    { id: "audit", label: "Validation / Audit" }
+  var groups = [
+    {
+      label: "WORKSPACE",
+      items: [
+        { id: "overview", label: "Overview" },
+        { id: "data-management", label: "Data Management" },
+        { id: "data-preparation", label: "Data Preparation" }
+      ]
+    },
+    {
+      label: "ANALYTICS",
+      items: [
+        { id: "material-analysis", label: "Material Analysis" },
+        { id: "demand-forecasting", label: "Demand Forecasting" }
+      ]
+    }
   ];
-  var badgeHtml = isBaselineActive()
-    ? '<span class="badge badge-baseline" style="font-size:10.5px;padding:2px 7px;">Baseline Awal</span>'
-    : state.localPreviewOnly
-      ? '<span class="badge badge-warn" style="font-size:10.5px;padding:2px 7px;">Preview Lokal</span>'
-      : '<span class="badge badge-active" style="font-size:10.5px;padding:2px 7px;">Dataset Aktif</span>';
+
+  var signOutIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
 
   return (
-    '<div class="nav">' +
+    '<aside class="nav" aria-label="Primary Navigation">' +
       '<div class="nav-brand">' +
-        '<div class="nav-brand-title">Dead Stock Analytics</div>' +
-        '<div class="nav-brand-sub">Spare Parts Demand Forecasting &amp; Model Validation</div>' +
-      '</div>' +
-      '<div class="nav-workspace-pill">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px;">' +
-          badgeHtml +
-          '<span style="font-size:10.5px;color:' + (state.syncLive ? 'var(--smooth)' : 'var(--faint)') + ';font-weight:600;">&#9679; ' + (state.syncLive ? 'Sinkron' : 'Offline') + '</span>' +
+        '<div class="nav-brand-row">' +
+          '<div class="nav-brand-mark">DS</div>' +
+          '<div style="min-width:0;">' +
+            '<div class="nav-brand-title">Dead Stock Analytics</div>' +
+            '<div class="nav-brand-sub">Spare Parts Demand Forecasting</div>' +
+          '</div>' +
         '</div>' +
-        '<div style="font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + esc(activeDatasetLabel()) + '">' + esc(activeDatasetLabel()) + '</div>' +
-        '<div style="color:var(--muted);margin-top:2px;">' + codes().length + ' material &middot; ' + histCount + ' history</div>' +
       '</div>' +
-      '<div class="nav-pages">' +
-        pages.map(function (p) {
-          return '<button class="nav-item' + (state.page === p.id ? ' active' : '') + '" data-action="goto" data-page="' + p.id + '">' +
-            '<span>' + p.label + '</span>' +
-            (p.badge !== undefined ? '<span class="nav-count mono">' + p.badge + '</span>' : '') +
-          '</button>';
+      '<div class="nav-scroll">' +
+        groups.map(function (g) {
+          return (
+            '<div class="nav-group">' +
+              '<div class="nav-group-label">' + g.label + '</div>' +
+              '<div class="nav-pages">' +
+                g.items.map(function (p) {
+                  return '<button class="nav-item' + (state.page === p.id ? ' active' : '') + '" data-action="goto" data-page="' + p.id + '" aria-current="' + (state.page === p.id ? 'page' : 'false') + '">' +
+                    navIcon(p.id) +
+                    '<span>' + p.label + '</span>' +
+                  '</button>';
+                }).join('') +
+              '</div>' +
+            '</div>'
+          );
         }).join('') +
       '</div>' +
       '<div class="nav-footer">' +
-        '<div style="color:var(--text);font-weight:600;word-break:break-all;margin-bottom:4px;">' + esc(state.user ? state.user.email : "-") + '</div>' +
-        '<div>Workspace pribadi berbasis Firebase UID. Data tersinkron otomatis lintas perangkat.</div>' +
-        '<div style="margin-top:10px;"><button data-action="logout" style="background:none;border:none;color:var(--accent);font-size:12px;font-weight:600;padding:0;">Keluar Akun</button></div>' +
+        '<div class="nav-dataset-meta">' +
+          '<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--faint);margin-bottom:2px;">Active Dataset</div>' +
+          '<div class="nav-dataset-name" title="' + esc(activeDatasetLabel()) + '">' + esc(activeDatasetLabel()) + '</div>' +
+          '<div style="margin-top:2px;">' + codes().length + ' materials</div>' +
+        '</div>' +
+        '<div class="nav-account-email" title="' + esc(state.user ? state.user.email : "-") + '">' + esc(state.user ? state.user.email : "-") + '</div>' +
+        '<button class="nav-signout-btn" data-action="logout">' + signOutIcon + '<span>Sign Out</span></button>' +
       '</div>' +
-    '</div>'
+    '</aside>'
   );
 }
 
 /* ============================================================
-   RENDER: OVERVIEW (DINAMIS UNTUK 8, 20, 50, 100+ MATERIAL)
+   RENDER: OVERVIEW
+   Sections: Portfolio Summary, Demand Pattern Distribution,
+             Forecasting Summary, Material Distribution
    ============================================================ */
 function renderOverview() {
   var all = codes().map(function (c) { return Object.assign({ code: c }, state.materials[c]); });
   var cnt = function (k) { return all.filter(function (m) { return m.classification === k; }).length; };
   var withF = all.filter(function (m) { return (m.predictions || []).length > 0; }).length;
+  var totalEvents = all.reduce(function (s, m) { return s + (m.predictions || []).length; }, 0);
   var nTT = all.filter(function (m) { return m.data.length > EVAL_LIMIT_MONTHS; }).length;
   var classes = ["Semua", "Lumpy", "Intermittent", "Erratic", "Smooth"];
   var q = state.searchQuery.trim().toLowerCase();
@@ -1706,117 +2199,469 @@ function renderOverview() {
 
   var shown = state.pageLimit > 0 ? filtered.slice(0, state.pageLimit) : filtered;
 
-  var dist = ["Lumpy", "Intermittent", "Erratic", "Smooth"].map(function (k) {
-    var c = cnt(k), cv = classColorVar(k);
-    return '<div style="display:flex;align-items:center;gap:10px;margin:7px 0;font-size:12.5px;"><span style="width:92px;color:var(--muted);">' + k + '</span><div style="flex:1;background:var(--bg);border-radius:4px;height:16px;"><div style="width:' + (all.length ? c / all.length * 100 : 0) + '%;height:16px;border-radius:4px;background:var(--' + cv + ');"></div></div><span class="mono" style="width:36px;text-align:right;font-weight:600;">' + c + '</span></div>';
+  var patternBars = ["Lumpy", "Intermittent", "Erratic", "Smooth"].map(function (k) {
+    var c = cnt(k), pct = all.length ? (c / all.length * 100) : 0, cv = classColorVar(k);
+    return '<div style="display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12.5px;">' +
+      '<span style="width:92px;color:var(--muted);font-weight:500;">' + k + '</span>' +
+      '<div style="flex:1;background:var(--bg);border-radius:4px;height:14px;"><div style="width:' + pct + '%;height:14px;border-radius:4px;background:var(--' + cv + ');"></div></div>' +
+      '<span class="mono" style="width:76px;text-align:right;font-weight:600;">' + c + ' <span style="color:var(--faint);font-weight:400;">(' + fmtNum(pct, 0) + '%)</span></span>' +
+    '</div>';
   }).join('');
 
   var byYear = {};
   all.forEach(function (m) { (m.predictions || []).forEach(function (p) { var y = p[0].slice(0, 4); byYear[y] = (byYear[y] || 0) + 1; }); });
   var ys = Object.keys(byYear).sort();
   var maxY = Math.max.apply(null, ys.map(function (y) { return byYear[y]; }).concat([1]));
-  var fcTl = ys.length ? '<div style="display:flex;align-items:flex-end;gap:8px;height:110px;overflow-x:auto;">' + ys.map(function (y) {
-    return '<div style="flex:1;min-width:34px;text-align:center;font-size:11px;color:var(--faint);"><div class="mono" style="color:var(--muted);">' + byYear[y] + '</div><div title="' + y + ': ' + byYear[y] + ' kejadian" style="height:' + Math.max(3, byYear[y] / maxY * 70) + 'px;background:var(--accent);border-radius:3px 3px 0 0;margin:2px 0;"></div>' + y + '</div>';
-  }).join('') + '</div>' : '<div class="empty-state">Tidak ada kejadian forecast.</div>';
+  var fcTimeline = ys.length ? '<div style="display:flex;align-items:flex-end;gap:6px;height:96px;overflow-x:auto;padding-top:10px;">' + ys.map(function (y) {
+    return '<div style="flex:1;min-width:34px;text-align:center;font-size:11px;color:var(--faint);"><div class="mono" style="color:var(--muted);font-size:10.5px;">' + byYear[y] + '</div><div title="' + y + ': ' + byYear[y] + ' projected events" style="height:' + Math.max(3, byYear[y] / maxY * 60) + 'px;background:var(--accent);border-radius:2px 2px 0 0;margin:3px 0;"></div>' + y + '</div>';
+  }).join('') + '</div>' : '<div class="empty-state">Tidak ada kejadian proyeksi pada horizon aktif.</div>';
 
   var methodDist = ["Croston", "SBA", "TSB"].map(function (k) {
     var c = all.filter(function (m) { return m.bestMethod === k; }).length;
-    return '<div style="display:flex;align-items:center;gap:10px;margin:7px 0;font-size:12.5px;"><span style="width:92px;color:var(--muted);">' + k + '</span><div style="flex:1;background:var(--bg);border-radius:4px;height:16px;"><div style="width:' + (all.length ? c / all.length * 100 : 0) + '%;height:16px;border-radius:4px;background:var(--accent);"></div></div><span class="mono" style="width:36px;text-align:right;">' + c + '</span></div>';
+    var pct = all.length ? (c / all.length * 100) : 0;
+    return '<div style="display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12.5px;">' +
+      '<span style="width:72px;color:var(--muted);font-weight:500;">' + k + '</span>' +
+      '<div style="flex:1;background:var(--bg);border-radius:4px;height:14px;"><div style="width:' + pct + '%;height:14px;border-radius:4px;background:var(--accent);"></div></div>' +
+      '<span class="mono" style="width:76px;text-align:right;font-weight:600;">' + c + ' <span style="color:var(--faint);font-weight:400;">(' + fmtNum(pct, 0) + '%)</span></span>' +
+    '</div>';
   }).join('');
 
   return (
     '<div class="topbar">' +
-      '<div><div class="topbar-title">Overview</div><div class="topbar-sub">Dataset aktif: <strong>' + esc(activeDatasetLabel()) + '</strong> (' + all.length + ' material)</div></div>' +
+      '<div>' +
+        '<div class="breadcrumb">Workspace / Overview</div>' +
+        '<div class="topbar-title">Overview</div>' +
+        '<div class="topbar-sub">Active dataset: <strong>' + esc(activeDatasetLabel()) + '</strong> (' + all.length + ' materials)</div>' +
+      '</div>' +
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-        '<button class="btn-ghost btn-sm" data-action="goto" data-page="datasets">Ganti Dataset / History</button>' +
-        '<button class="btn btn-sm" data-action="goto" data-page="data">+ Upload Excel / CSV</button>' +
+        '<button class="btn-ghost btn-sm" data-action="goto" data-page="demand-forecasting">Demand Forecasting</button>' +
+        '<button class="btn btn-sm" data-action="goto" data-page="data-management">Manage Datasets</button>' +
       '</div>' +
     '</div>' +
     '<div class="content">' +
-      kpiGrid([
-        kpiCard("Total Materials", all.length, "", isBaselineActive() ? "Baseline 8 material Excel" : "Dataset aktif Firebase"),
-        kpiCard("Lumpy Materials", cnt("Lumpy"), "", "ADI &gt; 1,32 &amp; CV&sup2; &gt; 0,49"),
-        kpiCard("Intermittent Materials", cnt("Intermittent"), "", "ADI &gt; 1,32 &amp; CV&sup2; &le; 0,49"),
-        kpiCard("Materials with Forecast", withF, "dari " + all.length, "punya &ge;1 kejadian forecast"),
-        kpiCard("Evaluasi Train/Test 50:50", nTT, "material", "rentang data &gt; 60 bulan"),
-        kpiCard("Evaluasi Demand Terakhir", all.length - nTT, "material", "rentang data &le; 60 bulan")
-      ]) +
-      '<div class="grid grid-3 section">' +
-        '<div class="card"><div class="kpi-label">Demand Classification (ADI-CV&sup2;)' + tip("ADI > 1,32 & CV² > 0,49 = Lumpy; ADI > 1,32 & CV² <= 0,49 = Intermittent; ADI <= 1,32 & CV² > 0,49 = Erratic; lainnya = Smooth.") + '</div>' + dist + '</div>' +
-        '<div class="card"><div class="kpi-label">Forecast Event Timeline (kejadian per tahun)' + tip(T_STAT) + '</div>' + fcTl + '</div>' +
-        '<div class="card"><div class="kpi-label">Metode Terbaik (MASE terendah)' + tip(T_EXCEL) + '</div>' + methodDist + '</div>' +
+      sec("Portfolio Summary", "Ringkasan cakupan material, klasifikasi permintaan, dan protokol evaluasi pada dataset aktif.",
+        '<div class="grid grid-4">' +
+          kpiCard("Total Materials", all.length, "", isBaselineActive() ? "Baseline 8 material Excel" : "Active workspace dataset") +
+          kpiCard("Lumpy / Intermittent", cnt("Lumpy") + " / " + cnt("Intermittent"), "", "ADI &gt; 1,32") +
+          kpiCard("Materials with Projection", withF, "/ " + all.length, totalEvents + " total projected events") +
+          kpiCard("Evaluation Protocol", nTT + " / " + (all.length - nTT), "", "&gt;60 mo Train/Test &middot; &le;60 mo Last Demand") +
+        '</div>'
+      ) +
+      '<div class="grid grid-2 section">' +
+        '<div class="card">' +
+          '<div class="section-title" style="margin-bottom:4px;">Demand Pattern Distribution' + tip("Klasifikasi Syntetos-Boylan: ADI > 1,32 & CV² > 0,49 = Lumpy; ADI > 1,32 & CV² <= 0,49 = Intermittent; ADI <= 1,32 & CV² > 0,49 = Erratic; lainnya = Smooth.") + '</div>' +
+          '<div class="section-desc" style="margin-bottom:12px;">Distribusi pola permintaan berdasarkan ambang batas ADI (1,32) dan CV&sup2; (0,49).</div>' +
+          patternBars +
+        '</div>' +
+        '<div class="card">' +
+          '<div class="section-title" style="margin-bottom:4px;">Forecasting Summary' + tip(T_METHOD) + '</div>' +
+          '<div class="section-desc" style="margin-bottom:10px;">Distribusi model terpilih (MASE terendah) dan sebaran kejadian proyeksi per tahun.</div>' +
+          methodDist +
+          '<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:10px;">' +
+            '<div style="font-size:11.5px;font-weight:600;color:var(--muted);">Projected Demand Events by Year</div>' +
+            fcTimeline +
+          '</div>' +
+        '</div>' +
       '</div>' +
-      '<div class="section">' +
-        '<div class="section-head"><div><div class="section-title">Daftar Material (' + filtered.length + ' dari ' + all.length + ')</div><div class="section-desc">Klik baris untuk membuka analisis mendalam per material.</div></div></div>' +
-        '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;justify-content:space-between;">' +
+      sec("Material Distribution", "Daftar seluruh material pada dataset aktif (" + filtered.length + " dari " + all.length + "). Pilih baris untuk membuka Material Analysis.",
+        '<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;">' +
           '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
             classes.map(function (cl) { return '<button class="chip' + (state.filterClass === cl ? ' active' : '') + '" data-action="filter" data-class="' + cl + '">' + cl + '</button>'; }).join('') +
           '</div>' +
           '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-            '<input class="field" id="ov-search" type="search" placeholder="Cari kode / nama material..." value="' + esc(state.searchQuery) + '" style="width:230px;">' +
+            '<input class="field" id="ov-search" type="search" placeholder="Search stock code or material..." value="' + esc(state.searchQuery) + '" style="width:230px;">' +
             '<select class="filter-select" id="ov-limit" style="padding:7px 28px 7px 10px;">' +
               [25, 50, 100, 0].map(function (lim) {
-                return '<option value="' + lim + '"' + (state.pageLimit === lim ? ' selected' : '') + '>' + (lim === 0 ? 'Tampilkan semua' : lim + ' baris') + '</option>';
+                return '<option value="' + lim + '"' + (state.pageLimit === lim ? ' selected' : '') + '>' + (lim === 0 ? 'Show all' : lim + ' rows') + '</option>';
               }).join('') +
             '</select>' +
           '</div>' +
         '</div>' +
         '<div class="card" style="padding:0;overflow-x:auto;">' +
-          '<table class="data-table"><thead><tr><th>Stock Code</th><th>Material</th><th>Classification</th><th>ADI</th><th>CV&sup2;</th><th>Best Method</th><th>MASE</th><th>Evaluasi</th><th></th></tr></thead><tbody>' +
+          '<table class="data-table"><thead><tr><th>Stock Code</th><th>Material</th><th>Classification</th><th>ADI</th><th>CV&sup2;</th><th>Selected Model</th><th>MASE</th><th>Projected Events</th><th>Evaluation</th></tr></thead><tbody>' +
             (shown.length ? shown.map(function (m) {
               var cv = classColorVar(m.classification);
               return '<tr class="clickable" data-action="select-detail" data-code="' + esc(m.code) + '">' +
                 '<td class="mono" style="font-weight:600;">' + esc(m.code) + '</td>' +
                 '<td>' + esc(m.name) + '</td>' +
-                '<td><span class="badge" style="background:var(--' + cv + '-dim);color:var(--' + cv + ');"><span class="badge-dot" style="background:var(--' + cv + ');"></span>' + esc(m.classification) + '</span></td>' +
+                '<td><span class="tag" style="background:var(--' + cv + '-dim);color:var(--' + cv + ');"><span class="tag-dot" style="background:var(--' + cv + ');"></span>' + esc(m.classification) + '</span></td>' +
                 '<td class="mono">' + fmtNum(m.adi, 2) + '</td>' +
                 '<td class="mono">' + fmtNum(m.cv2, 3) + '</td>' +
                 '<td style="font-weight:600;">' + esc(m.bestMethod) + '</td>' +
                 '<td class="mono">' + fmtNum(m.metrics[m.bestMethod].mase, 4) + '</td>' +
-                '<td style="font-size:12px;color:var(--muted);">' + (m.data.length > EVAL_LIMIT_MONTHS ? 'Train/Test 50:50' : 'Demand terakhir') + '</td>' +
-                '<td style="color:var(--faint);">&rarr;</td></tr>';
+                '<td class="mono">' + (m.predictions || []).length + '</td>' +
+                '<td style="font-size:12px;color:var(--muted);">' + (m.data.length > EVAL_LIMIT_MONTHS ? 'Train/Test 50:50' : 'Last Actual Demand') + '</td>' +
+              '</tr>';
             }).join('') : '<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--faint);">Tidak ada material yang sesuai filter.</td></tr>') +
           '</tbody></table>' +
+        '</div>'
+      ) +
+    '</div>'
+  );
+}
+
+/* ============================================================
+   RENDER: DATA MANAGEMENT
+   Sections: Dataset Upload, Dataset Information, Data Preview
+   ============================================================ */
+function renderDataManagement() {
+  var datasets = state.datasets || [];
+  var allCodes = codes();
+  var detailDs = state.detailDatasetId ? datasets.find(function (d) { return d.datasetId === state.detailDatasetId; }) : null;
+
+  var activeSpan = "-";
+  if (allCodes.length) {
+    var mins = [], maxs = [];
+    allCodes.forEach(function (c) {
+      var d = state.materials[c].data || [];
+      if (d.length) { mins.push(d[0][0]); maxs.push(d[d.length - 1][0]); }
+    });
+    mins.sort(); maxs.sort();
+    if (mins.length) activeSpan = mins[0] + " s.d. " + maxs[maxs.length - 1];
+  }
+
+  var uploadBody =
+    '<div class="card">' +
+      '<div class="upload-zone" id="bb-dropzone">' +
+        '<div style="font-size:13.5px;font-weight:600;margin-bottom:6px;">Drag and drop Excel (.xlsx, .xlsm) or CSV file here, or select a file</div>' +
+        '<button class="btn" id="bb-pick"' + (bb.busy || bb.uploading ? ' disabled' : '') + '>Select Excel / CSV File</button>' +
+        '<input type="file" id="bb-file" accept=".xlsx,.xlsm,.csv" style="display:none;">' +
+        '<div style="font-size:11.5px;color:var(--faint);margin-top:9px;">Kolom yang dikenali otomatis: <span class="mono">stock_code / kode</span>, <span class="mono">material / nama</span>, <span class="mono">periode / bulan</span>, <span class="mono">qty / demand</span>. Validasi struktur berjalan otomatis sebelum komputasi dimulai.</div>' +
+      '</div>' +
+      '<div id="bb-status" style="margin-top:10px;font-size:12.5px;color:var(--muted);display:none;"></div>' +
+      '<div id="bb-progress" style="margin-top:10px;display:none;"></div>' +
+      '<div id="bb-report"></div>' +
+    '</div>' +
+    '<details class="card" style="margin-top:12px;">' +
+      '<summary style="font-weight:600;font-size:12.5px;cursor:pointer;color:var(--muted);">Offline CSV Local Preview (non-persistent)</summary>' +
+      '<div style="margin-top:10px;">' +
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Gunakan opsi ini hanya untuk inspeksi lokal sementara saat offline. Data preview lokal tidak disimpan ke akun.</div>' +
+        '<button class="btn-ghost btn-sm" data-action="browse-csv">Select CSV for Local Preview</button>' +
+        '<input type="file" id="csv-input" accept=".csv" style="display:none;">' +
+        '<div id="upload-status" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>' +
+      '</div>' +
+    '</details>';
+
+  var detailHtml = "";
+  if (detailDs) {
+    var sr = detailDs.summaryResults || {};
+    var cc = sr.classificationCounts || {};
+    var mc = sr.bestMethodCounts || {};
+    var fc = detailDs.forecastingConfig || {};
+    detailHtml =
+      '<div class="card" style="border-color:var(--accent);margin-bottom:14px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap;">' +
+          '<div><div style="font-size:14px;font-weight:700;">Dataset Details: ' + esc(detailDs.name || detailDs.datasetId) + '</div><div class="mono" style="font-size:11.5px;color:var(--muted);">ID: ' + esc(detailDs.datasetId) + ' &middot; File: ' + esc(detailDs.originalFilename || "-") + '</div></div>' +
+          '<button class="btn-ghost btn-sm" data-action="toggle-ds-detail" data-id="' + esc(detailDs.datasetId) + '">Close</button>' +
+        '</div>' +
+        (detailDs.errorMessage ? '<div class="callout err" style="margin-bottom:12px;"><span class="callout-label">Error</span><span>' + esc(detailDs.errorMessage) + '</span></div>' : '') +
+        '<div class="grid grid-3">' +
+          '<div style="font-size:12.5px;">' +
+            '<div style="font-weight:700;margin-bottom:6px;">Metadata</div>' +
+            metricRow("Status", esc(detailDs.status || "-"), true) +
+            metricRow("Uploaded", esc(fmtDateTime(detailDs.uploadedAt)), false) +
+            metricRow("Completed", esc(fmtDateTime(detailDs.completedAt)), false) +
+            metricRow("Materials", detailDs.materialCount || 0, false) +
+            metricRow("Period Range", esc((detailDs.periodMin || "-") + " - " + (detailDs.periodMax || "-")), false) +
+          '</div>' +
+          '<div style="font-size:12.5px;">' +
+            '<div style="font-weight:700;margin-bottom:6px;">Analytical Summary</div>' +
+            metricRow("Lumpy / Intermittent", (cc.Lumpy || 0) + " / " + (cc.Intermittent || 0), false) +
+            metricRow("Erratic / Smooth", (cc.Erratic || 0) + " / " + (cc.Smooth || 0), false) +
+            metricRow("Models (Croston / SBA / TSB)", (mc.Croston || 0) + " / " + (mc.SBA || 0) + " / " + (mc.TSB || 0), false) +
+            metricRow("Train/Test 50:50 (&gt;60 mo)", sr.evalTrainTestCount || 0, false) +
+            metricRow("Last Actual Demand (&le;60 mo)", sr.evalLastDemandCount || 0, false) +
+          '</div>' +
+          '<div style="font-size:12.5px;">' +
+            '<div style="font-weight:700;margin-bottom:6px;">Model Configuration</div>' +
+            metricRow("Grid Step", fmtNum(fc.gridStep || 0.0001, 4), false) +
+            metricRow("Optimization Objective", "Min One-Step MSE", false) +
+            metricRow("Selection Criterion", "Lowest MASE", false) +
+            metricRow("File Archive", detailDs.storagePath ? "Available" : "Not archived", false) +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  var dsRows = [];
+  dsRows.push(tr([
+    isBaselineActive() ? '<span class="tag tag-active">Active</span>' : '<span class="tag tag-muted">Reference</span>',
+    '<div style="font-weight:600;">Baseline Reference (8 Materials)</div><div class="mono" style="font-size:11px;color:var(--faint);">baseline</div>',
+    '<span class="mono" style="font-size:12px;">Built-in Reference</span>',
+    '<span class="mono" style="font-weight:600;">8</span>',
+    '<span class="mono" style="font-size:12px;">2020-01 &ndash; 2026-01</span>',
+    '<span style="font-size:12px;color:var(--muted);">Permanent</span>',
+    isBaselineActive()
+      ? '<span style="font-size:12px;color:var(--muted);">Current workspace</span>'
+      : '<button class="btn-ghost btn-sm" data-action="activate-dataset" data-id="baseline">Activate</button>'
+  ]));
+
+  datasets.forEach(function (ds) {
+    var isAct = ds.datasetId === state.activeDatasetId && !state.localPreviewOnly;
+    var statusTag = isAct
+      ? '<span class="tag tag-active">Active</span>'
+      : ds.status === "completed"
+        ? '<span class="tag tag-muted">Saved</span>'
+        : ds.status === "failed"
+          ? '<span class="tag tag-error">Failed</span>'
+          : '<span class="tag tag-warn">Processing</span>';
+
+    var actions = '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+    if (ds.status === "completed" && !isAct) {
+      actions += '<button class="btn btn-sm" data-action="activate-dataset" data-id="' + esc(ds.datasetId) + '">Activate</button>';
+    }
+    actions += '<button class="btn-ghost btn-sm" data-action="toggle-ds-detail" data-id="' + esc(ds.datasetId) + '">' + (state.detailDatasetId === ds.datasetId ? 'Hide' : 'Details') + '</button>';
+    if (ds.storagePath) {
+      actions += '<button class="btn-ghost btn-sm" data-action="download-ds" data-id="' + esc(ds.datasetId) + '">Download</button>';
+    }
+    actions += '<button class="btn-danger" data-action="delete-ds" data-id="' + esc(ds.datasetId) + '">Delete</button>';
+    actions += '</div>';
+
+    dsRows.push(tr([
+      statusTag,
+      '<div style="font-weight:600;">' + esc(ds.name || ds.datasetId) + '</div><div class="mono" style="font-size:11px;color:var(--faint);">' + esc(ds.datasetId) + '</div>',
+      '<span class="mono" style="font-size:12px;">' + esc(ds.originalFilename || "-") + '</span>',
+      '<span class="mono" style="font-weight:600;">' + (ds.materialCount || 0) + '</span>',
+      '<span class="mono" style="font-size:12px;">' + esc(ds.periodMin || "-") + ' &ndash; ' + esc(ds.periodMax || "-") + '</span>',
+      '<span style="font-size:12px;color:var(--muted);">' + esc(fmtDateTime(ds.uploadedAt)) + '</span>',
+      actions
+    ]));
+  });
+
+  var infoBody =
+    '<div class="grid grid-4" style="margin-bottom:14px;">' +
+      kpiCard("Active Dataset", '<span style="font-size:15px;">' + esc(activeDatasetLabel()) + '</span>', "", isBaselineActive() ? "Built-in baseline" : "Account workspace") +
+      kpiCard("Materials Loaded", allCodes.length, "", "unique Stock Codes") +
+      kpiCard("Historical Span", '<span class="mono" style="font-size:14px;">' + esc(activeSpan) + '</span>', "", "earliest to latest period") +
+      kpiCard("Saved Account Datasets", datasets.length, "", state.syncLive ? "Cloud sync active" : "Offline") +
+    '</div>' +
+    detailHtml +
+    tbl(["Status", "Dataset Name", "Source File", "Materials", "Period Range", "Uploaded", "Actions"], dsRows);
+
+  // Data Preview: menampilkan pratinjau material dari file baru (jika ada) atau dataset aktif
+  var previewRows = allCodes.slice(0, 25).map(function (c) {
+    var m = state.materials[c];
+    var d = m.data || [];
+    var totQty = d.reduce(function (s, r) { return s + Number(r[1] || 0); }, 0);
+    return tr([
+      '<span class="mono" style="font-weight:600;">' + esc(c) + '</span>',
+      esc(m.name),
+      '<span class="mono">' + (d.length ? esc(d[0][0]) : "-") + '</span>',
+      '<span class="mono">' + (d.length ? esc(d[d.length - 1][0]) : "-") + '</span>',
+      '<span class="mono">' + d.length + '</span>',
+      '<span class="mono">' + countNonzero(d) + '</span>',
+      '<span class="mono">' + fmtNum(totQty, 2) + '</span>'
+    ]);
+  });
+
+  var previewBody =
+    (bb.report && bb.report.material_codes_preview && bb.report.material_codes_preview.length
+      ? '<div class="callout" style="margin-bottom:12px;"><span class="callout-label">Staged</span><span>File baru <strong>' + esc(bb.report.filename) + '</strong> (' + bb.report.n_materials + ' material) siap diproses. Contoh Stock Code terdeteksi: <span class="mono">' + esc(bb.report.material_codes_preview.slice(0, 12).join(", ")) + '</span>.</span></div>'
+      : '') +
+    (previewRows.length
+      ? tbl(["Stock Code", "Material", "Start Period", "End Period", "Months", "Non-Zero Months", "Total Demand"], previewRows) +
+        (allCodes.length > 25 ? '<div style="font-size:11.5px;color:var(--faint);margin-top:8px;">Menampilkan 25 material pertama dari ' + allCodes.length + ' material pada dataset aktif. Lihat seluruh seri bulanan di halaman Data Preparation.</div>' : '')
+      : emptyBox("Belum ada data untuk ditampilkan", "Unggah file Excel atau CSV pada bagian Dataset Upload."));
+
+  return (
+    '<div class="topbar">' +
+      '<div>' +
+        '<div class="breadcrumb">Workspace / Data Management</div>' +
+        '<div class="topbar-title">Data Management</div>' +
+        '<div class="topbar-sub">Unggah dataset, kelola riwayat akun, dan tinjau struktur data sumber</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<span id="bb-conn-pill" class="tag tag-muted"><span class="tag-dot" style="background:var(--faint);"></span>Checking Service...</span>' +
+        '<button class="btn-ghost btn-sm" id="bb-check" style="display:none;">Reconnect</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="content">' +
+      sec("Dataset Upload", "Unggah file Excel (.xlsx, .xlsm) atau CSV. Sistem memvalidasi format file, kolom wajib, Stock Code, duplikasi, dan tipe data secara otomatis.", uploadBody) +
+      sec("Dataset Information", "Metadata dataset aktif dan daftar dataset tersimpan pada akun Anda.", infoBody) +
+      sec("Data Preview", "Pratinjau ringkasan record material pada dataset aktif.", previewBody) +
+    '</div>'
+  );
+}
+
+/* ============================================================
+   RENDER: DATA PREPARATION
+   Sections: Data Preprocessing, Monthly Demand Aggregation,
+             Processed Dataset
+   ============================================================ */
+function renderDataPreparation() {
+  var allCodes = codes();
+  var prepVal = SystemValidator.validateDataPreparation(state.materials);
+  var m = mat();
+
+  var totalObs = 0, totalZero = 0, totalNonZero = 0, totalGaps = 0, nOver60 = 0;
+  var aggRows = [];
+  var q = state.searchQuery.trim().toLowerCase();
+
+  allCodes.forEach(function (c) {
+    var item = state.materials[c];
+    var d = item.data || [];
+    var n = d.length;
+    var gaps = 0, zeros = 0, nz = 0, sumQty = 0;
+    for (var i = 0; i < n; i++) {
+      var val = Number(d[i][1] || 0);
+      if (val === 0) zeros++; else { nz++; sumQty += val; }
+      if (i > 0) {
+        var diff = monthToIndex(d[i][0]) - monthToIndex(d[i - 1][0]) - 1;
+        if (diff > 0) gaps += diff;
+      }
+    }
+    totalObs += n;
+    totalZero += zeros;
+    totalNonZero += nz;
+    totalGaps += gaps;
+    if (n > EVAL_LIMIT_MONTHS) nOver60++;
+
+    if (q && c.toLowerCase().indexOf(q) < 0 && String(item.name || "").toLowerCase().indexOf(q) < 0) return;
+    var meanNz = nz > 0 ? sumQty / nz : 0;
+    var isSel = c === state.selected;
+    aggRows.push(
+      '<tr class="clickable' + (isSel ? ' row-selected' : '') + '" data-action="select-prep" data-code="' + esc(c) + '">' +
+        '<td class="mono" style="font-weight:600;">' + esc(c) + '</td>' +
+        '<td>' + esc(item.name) + '</td>' +
+        '<td class="mono">' + (n ? esc(d[0][0]) + ' &ndash; ' + esc(d[n - 1][0]) : '-') + '</td>' +
+        '<td class="mono">' + n + '</td>' +
+        '<td class="mono">' + gaps + '</td>' +
+        '<td class="mono">' + zeros + '</td>' +
+        '<td class="mono">' + nz + '</td>' +
+        '<td class="mono">' + fmtNum(sumQty, 2) + '</td>' +
+        '<td class="mono">' + fmtNum(meanNz, 2) + '</td>' +
+      '</tr>'
+    );
+  });
+
+  var zeroShare = totalObs > 0 ? (totalZero / totalObs * 100) : 0;
+  var preprocessingBody =
+    renderValidationFeedback(prepVal) +
+    '<div class="grid grid-4" style="margin-bottom:14px;">' +
+      kpiCard("Monthly Observations", totalObs, "", allCodes.length + " processed materials") +
+      kpiCard("Zero-Demand Months", totalZero, "", fmtNum(zeroShare, 1) + "% preserved for intermittent modeling") +
+      kpiCard("Non-Zero Demand Events", totalNonZero, "", "positive monthly demand records") +
+      kpiCard("Chronological Gaps", totalGaps, "", totalGaps === 0 ? "continuous monthly timeline" : "detected missing months") +
+    '</div>' +
+    '<div class="card">' +
+      '<div style="font-size:12.5px;font-weight:700;margin-bottom:8px;">Applied Preprocessing Rules</div>' +
+      '<div class="grid grid-2" style="font-size:12.5px;color:var(--muted);">' +
+        '<div>' +
+          metricRow("Chronological Ordering", "Ascending YYYY-MM per Stock Code", false) +
+          metricRow("Duplicate Aggregation", "Summed within (Stock Code, Month)", false) +
+          metricRow("Zero-Demand Handling", "Intermediate empty months filled with 0", false) +
+        '</div>' +
+        '<div>' +
+          metricRow("Minimum Series Requirement", ">= 6 months & >= 1 positive demand", false) +
+          metricRow("Train/Test 50:50 Eligible (&gt;60 mo)", nOver60 + " materials", false) +
+          metricRow("Last Actual Demand Eligible (&le;60 mo)", (allCodes.length - nOver60) + " materials", false) +
         '</div>' +
       '</div>' +
+    '</div>';
+
+  var aggBody =
+    '<div style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">' +
+      '<input class="field" id="prep-search" type="search" placeholder="Search stock code or material..." value="' + esc(state.searchQuery) + '" style="width:260px;">' +
+      '<span style="font-size:12px;color:var(--faint);">Klik baris material untuk melihat deret waktu bulanannya di Processed Dataset.</span>' +
+    '</div>' +
+    (aggRows.length
+      ? '<div style="max-height:380px;overflow:auto;border-radius:8px;">' +
+          tbl(["Stock Code", "Material", "Period Range", "Months", "Gaps", "Zero Months", "Non-Zero", "Total Demand", "Mean Non-Zero"], aggRows) +
+        '</div>'
+      : emptyBox("Tidak ada material yang sesuai pencarian", ""));
+
+  var processedBody = "";
+  if (m && m.data && m.data.length) {
+    var cum = 0;
+    var seriesRows = [];
+    m.data.forEach(function (row) {
+      var qty = Number(row[1] || 0);
+      cum += qty;
+      if (state.prepNonZeroOnly && qty === 0) return;
+      seriesRows.push(tr([
+        '<span class="mono">' + esc(row[0]) + '</span>',
+        fmtMonth(row[0]),
+        '<span class="mono" style="font-weight:' + (qty > 0 ? '600' : '400') + ';color:' + (qty > 0 ? 'var(--text)' : 'var(--faint)') + ';">' + fmtNum(qty, 4) + '</span>',
+        qty > 0 ? '<span class="tag tag-active">Demand Event</span>' : '<span class="tag tag-muted">Zero Demand</span>',
+        '<span class="mono">' + fmtNum(cum, 4) + '</span>'
+      ]));
+    });
+
+    processedBody =
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+          materialSelector() +
+          '<button class="chip' + (!state.prepNonZeroOnly ? ' active' : '') + '" data-action="prep-filter" data-mode="all">All Months (' + m.data.length + ')</button>' +
+          '<button class="chip' + (state.prepNonZeroOnly ? ' active' : '') + '" data-action="prep-filter" data-mode="nonzero">Non-Zero Only (' + countNonzero(m.data) + ')</button>' +
+        '</div>' +
+        '<button class="btn-ghost btn-sm" data-action="export-processed">Export Processed CSV</button>' +
+      '</div>' +
+      '<div style="max-height:380px;overflow:auto;border-radius:8px;">' +
+        tbl(["Period (YYYY-MM)", "Month", "Actual Demand (Xt)", "Demand State", "Cumulative Demand"], seriesRows) +
+      '</div>';
+  } else {
+    processedBody = emptyBox("Tidak ada processed dataset tersedia", "");
+  }
+
+  return (
+    '<div class="topbar">' +
+      '<div>' +
+        '<div class="breadcrumb">Workspace / Data Preparation</div>' +
+        '<div class="topbar-title">Data Preparation</div>' +
+        '<div class="topbar-sub">Hasil preprocessing, agregasi permintaan bulanan, dan dataset siap pemodelan untuk <strong>' + esc(activeDatasetLabel()) + '</strong></div>' +
+      '</div>' +
+      '<button class="btn-ghost btn-sm" data-action="goto" data-page="material-analysis">Proceed to Material Analysis</button>' +
+    '</div>' +
+    '<div class="content">' +
+      sec("Data Preprocessing", "Ringkasan normalisasi deret waktu, pengurutan kronologis, dan penanganan zero-demand yang diterapkan secara otomatis.", preprocessingBody) +
+      sec("Monthly Demand Aggregation", "Agregasi permintaan bulanan per material (" + allCodes.length + " material).", aggBody) +
+      sec("Processed Dataset", "Deret waktu bulanan bersih yang digunakan langsung oleh calculation engine.", processedBody) +
     '</div>'
   );
 }
 
 /* ============================================================
    RENDER: MATERIAL ANALYSIS
+   Sections: Material Profile, Historical Demand,
+             Demand Characteristics, Demand Classification,
+             Parameter Optimization, Model Performance,
+             Selected Forecasting Model, Demand Projection
    ============================================================ */
-function auditGridCard(m) {
+function parameterOptimizationTable(m) {
   var xs = m.data.map(function (r) { return r[1]; });
   var rows = [["Croston", "&alpha;", m.alphaC, "croston"], ["SBA", "&alpha;", m.alphaS, "sba"], ["TSB", "&beta;", m.betaT, "tsb"]];
   var bk = m.backend && m.backend.gridSearch;
-  var src = m.source === "excel"
-    ? 'Sumber: <strong>Baseline Excel</strong> (nilai parameter dan MSE terverifikasi identik dengan sistem)'
-    : m.source === "backend_python"
-      ? 'Sumber: <strong>Server Forecasting</strong> (formula terverifikasi Excel, tersimpan permanen di akun Anda)'
-      : 'Sumber: <strong>Preview lokal</strong> (sementara)';
 
-  return '<div class="section"><details class="card" style="cursor:pointer;"><summary style="font-weight:700;font-size:13.5px;">Detail Grid Search (dapat diaudit)</summary>' +
-    '<div style="font-size:12px;color:var(--muted);margin:10px 0;">' + src + ' &middot; 10.000 kandidat per metode (0,0001&ndash;1,0000) &middot; tie &rarr; nilai terkecil pertama.</div>' +
-    '<div style="overflow-x:auto;"><table style="width:100%;font-size:12.5px;border-collapse:collapse;"><tr style="text-align:left;color:var(--muted);"><th style="padding:5px 0;">Metode</th><th>Parameter</th><th>Rentang</th><th>Step</th><th>Objektif</th><th>Nilai optimal</th><th>MSE minimum</th><th>Kandidat di minimum</th></tr>' +
+  return tbl(
+    ["Model", "Parameter", "Search Range", "Step", "Objective", "Optimal Value", "Minimum MSE", "Min Candidates"],
     rows.map(function (r) {
       var g = bk && bk[r[3]];
       var mse = g ? g.minimum_mse : (m.metrics[r[0]] ? m.metrics[r[0]].mse : xlMse(xs, r[0], r[2]));
-      return '<tr style="border-top:1px solid var(--border);"><td style="padding:6px 0;font-weight:600;">' + r[0] + '</td><td>' + r[1] + '</td><td class="mono">0,0001&ndash;1,0000</td><td class="mono">0,0001</td><td>MSE one-step-ahead min</td><td class="mono">' + fmtNum(r[2], 4) + '</td><td class="mono">' + fmtNum(mse, 6) + '</td><td class="mono">' + (g ? g.n_candidates_at_minimum : '&mdash;') + '</td></tr>';
-    }).join('') + '</table></div></details></div>';
+      return tr([
+        '<strong>' + r[0] + '</strong>',
+        r[1],
+        '<span class="mono">0,0001&ndash;1,0000</span>',
+        '<span class="mono">0,0001</span>',
+        'Min one-step-ahead MSE',
+        '<span class="mono" style="font-weight:700;">' + fmtNum(r[2], 4) + '</span>',
+        '<span class="mono">' + fmtNum(mse, 6) + '</span>',
+        '<span class="mono">' + (g ? g.n_candidates_at_minimum : '&mdash;') + '</span>'
+      ]);
+    })
+  );
 }
 
 function evalCompareNote(bestEval, bestInSample, what) {
   if (bestEval === bestInSample) {
-    return '<div class="callout" style="margin-top:14px;"><span>&#9989;</span><span>Metode terbaik pada evaluasi ini (' + what + ') adalah <strong>' + esc(bestEval) + '</strong>, konsisten dengan metode terbaik in-sample.</span></div>';
+    return '<div class="callout" style="margin-top:12px;"><span class="callout-label">Evaluation</span><span>Model terbaik pada evaluasi out-of-sample (' + what + ') adalah <strong>' + esc(bestEval) + '</strong>, konsisten dengan model terpilih berdasarkan MASE in-sample.</span></div>';
   }
-  return '<div class="callout warn" style="margin-top:14px;"><span>&#8505;</span><span>Metode terbaik pada evaluasi ini (' + what + ') adalah <strong>' + esc(bestEval) + '</strong>, berbeda dari metode terbaik in-sample (<strong>' + esc(bestInSample) + '</strong>). Sumber perbedaan: optimasi in-sample memakai seluruh data historis, sedangkan evaluasi ini mengoptimasi ulang &alpha;/&beta; <em>hanya pada data Train</em> tanpa data leakage.</span></div>';
+  return '<div class="callout warn" style="margin-top:12px;"><span class="callout-label">Note</span><span>Model terbaik pada evaluasi out-of-sample (' + what + ') adalah <strong>' + esc(bestEval) + '</strong>, berbeda dari model terpilih in-sample (<strong>' + esc(bestInSample) + '</strong>). Optimasi evaluasi dilakukan ulang hanya pada data Train tanpa data leakage.</span></div>';
 }
 
 function evalChartSvg(ev, method) {
   var rows = ev.rows || [], n = rows.length;
   if (!n) return "";
-  var W = 900, H = 210, pad = 8, bot = 22, top = 12, bw = (W - pad * 2) / n;
+  var W = 900, H = 200, pad = 8, bot = 22, top = 12, bw = (W - pad * 2) / n;
   var maxV = 1;
   rows.forEach(function (r) { maxV = Math.max(maxV, r.actual, r[method] || 0); });
   var ph = H - bot - top;
@@ -1824,186 +2669,261 @@ function evalChartSvg(ev, method) {
   rows.forEach(function (r, i) {
     if (r.actual > 0) {
       var h = Math.max(3, r.actual / maxV * ph);
-      s += '<rect x="' + (pad + i * bw + 1) + '" y="' + (H - bot - h) + '" width="' + Math.max(1.5, bw - 2) + '" height="' + h + '" fill="var(--accent)"><title>' + esc(r.m) + ' aktual: ' + r.actual + '</title></rect>';
+      s += '<rect x="' + (pad + i * bw + 1) + '" y="' + (H - bot - h) + '" width="' + Math.max(1.5, bw - 2) + '" height="' + h + '" fill="var(--accent)"><title>' + esc(r.m) + ' actual: ' + r.actual + '</title></rect>';
     }
   });
   var pts = rows.map(function (r, i) { return (pad + i * bw + bw / 2) + ',' + (H - bot - (r[method] || 0) / maxV * ph); }).join(' ');
   s += '<polyline points="' + pts + '" fill="none" stroke="var(--teal)" stroke-width="2"/>';
   rows.forEach(function (r, i) {
-    s += '<circle cx="' + (pad + i * bw + bw / 2) + '" cy="' + (H - bot - (r[method] || 0) / maxV * ph) + '" r="2.2" fill="var(--teal)"><title>' + esc(r.m) + ' forecast ' + esc(method) + ': ' + fmtNum(r[method], 4) + '</title></circle>';
+    s += '<circle cx="' + (pad + i * bw + bw / 2) + '" cy="' + (H - bot - (r[method] || 0) / maxV * ph) + '" r="2.2" fill="var(--teal)"><title>' + esc(r.m) + ' ' + esc(method) + ': ' + fmtNum(r[method], 4) + '</title></circle>';
   });
   s += '<text x="' + pad + '" y="' + (H - 6) + '" font-size="10.5" fill="var(--faint)">' + esc(rows[0].m) + '</text>' +
        '<text x="' + (W - pad) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10.5" fill="var(--faint)">' + esc(rows[n - 1].m) + '</text>' +
-       '<text x="' + pad + '" y="' + (top + 2) + '" font-size="10.5" fill="var(--faint)">maks ' + fmtNum(maxV, 2) + '</text>';
+       '<text x="' + pad + '" y="' + (top + 2) + '" font-size="10.5" fill="var(--faint)">max ' + fmtNum(maxV, 2) + '</text>';
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;">' + s + '</svg>';
 }
 
-function renderEvaluationSection(m) {
+function renderOutOfSampleBlock(m) {
   var ev = evaluationFor(m), N = m.data.length, xlBest = m.bestMethod;
-  var sepNote = '<div class="callout" style="margin-bottom:14px;"><span>&#8505;</span><span><strong>Evaluasi Tanpa Data Leakage:</strong> Parameter &alpha;/&beta; dioptimasi ulang <strong>hanya pada data Train</strong> (grid search 0,0001&ndash;1,0000). Aturan pembagian: rentang data &gt; 60 bulan (&gt; 5 tahun) memakai Train/Test 50:50 kronologis; &le; 60 bulan (&le; 5 tahun) memakai data awal hingga sebelum demand aktual terakhir.</span></div>';
   var warnHtml = (ev && ev.warnings && ev.warnings.length)
-    ? ev.warnings.map(function (w) { return '<div class="callout warn" style="margin-bottom:12px;"><span>&#9888;</span><span>' + esc(w) + '</span></div>'; }).join('')
+    ? ev.warnings.map(function (w) { return '<div class="callout warn" style="margin-bottom:10px;"><span class="callout-label">Warning</span><span>' + esc(w) + '</span></div>'; }).join('')
     : '';
 
   if (!ev || ev.insufficient) {
-    return '<div class="section"><div class="section-head"><div><div class="section-title">Evaluasi Out-of-Sample</div></div></div>' + sepNote + warnHtml +
-      '<div class="callout warn"><span>&#9888;</span><span>Data historis terlalu pendek untuk evaluasi ini (minimal 3 bulan data Train).</span></div></div>';
+    return '<div style="margin-top:16px;">' + warnHtml +
+      '<div class="callout warn"><span class="callout-label">Warning</span><span>Data historis terlalu pendek untuk evaluasi out-of-sample (minimal 3 bulan data Train).</span></div></div>';
   }
-  var paramCard = kpiCard("&alpha;/&beta; dari Train", fmtNum(ev.params.Croston, 4) + " / " + fmtNum(ev.params.SBA, 4) + " / " + fmtNum(ev.params.TSB, 4), "", "Croston / SBA / TSB (hanya Train)");
+
+  var paramText = fmtNum(ev.params.Croston, 4) + " / " + fmtNum(ev.params.SBA, 4) + " / " + fmtNum(ev.params.TSB, 4);
 
   if (ev.mode === "traintest") {
     var bt = ev.bestTest;
-    var methodCards = ["Croston", "SBA", "TSB"].map(function (k) {
-      var e = ev.metrics[k], isBest = k === bt, isXl = k === xlBest;
-      return '<div class="card" style="' + (isBest ? 'border-color:var(--teal);box-shadow:0 0 0 1px var(--teal);' : '') + '">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-weight:700;font-size:15px;">' + k + '</span><span>' +
-        (isBest ? '<span style="font-size:10.5px;font-weight:700;color:var(--teal);">TERBAIK (TEST)</span>' : '') +
-        (isXl ? '<span style="font-size:10.5px;font-weight:700;color:var(--accent);margin-left:6px;">METODE UTAMA</span>' : '') + '</span></div>' +
-        metricRow("MASE", e.mase === null ? "n/a" : fmtNum(e.mase, 4), true) +
-        metricRow("MAD", e.mad === null ? "n/a" : fmtNum(e.mad, 4), false) +
-        metricRow("MSE", e.mse === null ? "n/a" : fmtNum(e.mse, 4), false) +
-        metricRow("RMSSE", e.rmsse === null ? "n/a" : fmtNum(e.rmsse, 4), false) +
-        metricRow("MAPE", pctFmt(e.mape), false) + metricRow("SMAPE", pctFmt(e.smape), false) + metricRow("WAPE", pctFmt(e.wape), false) +
-        '<div style="font-size:11px;color:var(--faint);margin-top:8px;">n uji = ' + e.n + ' bulan</div></div>';
-    }).join('');
-    var tableRows = (ev.rows || []).map(function (r) {
-      return tr([fmtMonth(r.m), '<span class="mono" style="font-weight:600;">' + fmtNum(r.actual, 4) + '</span>', fmtNum(r.Croston, 4), fmtNum(r.SBA, 4), fmtNum(r.TSB, 4), '<span class="mono">' + fmtNum(r.actual - r[xlBest], 4) + '</span>']);
+    var testMetricRows = ["Croston", "SBA", "TSB"].map(function (k) {
+      var e = ev.metrics[k];
+      var labels = [];
+      if (k === bt) labels.push('<span class="tag tag-active" style="margin-left:6px;">Lowest Test MASE</span>');
+      if (k === xlBest) labels.push('<span class="tag tag-muted" style="margin-left:4px;">Selected</span>');
+      return tr([
+        '<strong>' + k + '</strong>' + labels.join(''),
+        '<span class="mono">' + (k === "TSB" ? "&beta; = " + fmtNum(ev.params.TSB, 4) : "&alpha; = " + fmtNum(ev.params[k], 4)) + '</span>',
+        '<span class="mono" style="font-weight:700;">' + (e.mase === null ? "n/a" : fmtNum(e.mase, 4)) + '</span>',
+        '<span class="mono">' + (e.mse === null ? "n/a" : fmtNum(e.mse, 4)) + '</span>',
+        '<span class="mono">' + (e.mad === null ? "n/a" : fmtNum(e.mad, 4)) + '</span>',
+        '<span class="mono">' + (e.rmsse === null ? "n/a" : fmtNum(e.rmsse, 4)) + '</span>',
+        '<span class="mono">' + pctFmt(e.mape) + '</span>',
+        '<span class="mono">' + pctFmt(e.wape) + '</span>'
+      ]);
     });
-    return '<div class="section">' +
-      '<div class="section-head"><div><div class="section-title">Evaluasi &mdash; Train/Test 50:50 (rentang data &gt; 5 tahun)</div>' +
-      '<div class="section-desc">Rentang data ' + spanText(N) + ' (&gt; 60 bulan), dibagi kronologis 50% Train dan 50% Test.</div></div></div>' + sepNote + warnHtml +
-      '<div class="grid grid-4" style="margin-bottom:14px;">' +
-        kpiCard("Periode Train", ev.trainSize, "bulan", fmtMonth(ev.trainRange[0]) + " &ndash; " + fmtMonth(ev.trainRange[1]) + " &middot; " + ev.nzTrain + " kejadian") +
-        kpiCard("Periode Test", ev.testSize, "bulan", fmtMonth(ev.testRange[0]) + " &ndash; " + fmtMonth(ev.testRange[1]) + " &middot; " + ev.nzTest + " kejadian") +
-        paramCard +
-        kpiCard("MASE Terbaik (Test)", bt && ev.metrics[bt].mase !== null ? fmtNum(ev.metrics[bt].mase, 4) : "n/a", "", bt ? "metode " + bt : "") +
-      '</div>' +
-      '<div class="grid grid-3">' + methodCards + '</div>' +
-      '<div class="card" style="margin-top:14px;">' + evalChartSvg(ev, xlBest) +
-        '<div style="font-size:11px;color:var(--faint);margin-top:8px;"><span style="color:var(--accent);font-weight:700;">&#9632;</span> demand aktual Test &nbsp; <span style="color:var(--teal);font-weight:700;">&#9679;</span> forecast one-step-ahead (' + esc(xlBest) + ')</div></div>' +
-      '<div style="margin-top:14px;"><div class="section-title" style="margin-bottom:8px;font-size:13.5px;">Forecast vs Demand Aktual &mdash; Periode Test</div>' +
-        '<div style="max-height:360px;overflow:auto;border-radius:10px;">' + tbl(["Bulan Test", "Demand Aktual", "Forecast Croston", "Forecast SBA", "Forecast TSB", "Aktual &minus; Forecast " + esc(xlBest)], tableRows) + '</div></div>' +
-      (bt ? evalCompareNote(bt, xlBest, "MASE terendah pada data Test") : '') +
-    '</div>';
+
+    var tableRows = (ev.rows || []).map(function (r) {
+      return tr([
+        fmtMonth(r.m),
+        '<span class="mono" style="font-weight:600;">' + fmtNum(r.actual, 4) + '</span>',
+        '<span class="mono">' + fmtNum(r.Croston, 4) + '</span>',
+        '<span class="mono">' + fmtNum(r.SBA, 4) + '</span>',
+        '<span class="mono">' + fmtNum(r.TSB, 4) + '</span>',
+        '<span class="mono">' + fmtNum(r.actual - r[xlBest], 4) + '</span>'
+      ]);
+    });
+
+    return (
+      '<div style="margin-top:16px;">' +
+        '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">Hold-Out Evaluation: Train/Test 50:50 (&gt; 60 Months)</div>' +
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Rentang data ' + spanText(N) + ' dibagi kronologis 50% Train dan 50% Test. Parameter &alpha;/&beta; dioptimasi ulang hanya pada periode Train tanpa data leakage.</div>' +
+        warnHtml +
+        '<div class="grid grid-4" style="margin-bottom:12px;">' +
+          kpiCard("Train Period", ev.trainSize, "months", fmtMonth(ev.trainRange[0]) + " &ndash; " + fmtMonth(ev.trainRange[1]) + " &middot; " + ev.nzTrain + " events") +
+          kpiCard("Test Period", ev.testSize, "months", fmtMonth(ev.testRange[0]) + " &ndash; " + fmtMonth(ev.testRange[1]) + " &middot; " + ev.nzTest + " events") +
+          kpiCard("Train-Only Parameters", '<span class="mono" style="font-size:14px;">' + paramText + '</span>', "", "Croston / SBA / TSB") +
+          kpiCard("Lowest Test MASE", bt && ev.metrics[bt].mase !== null ? fmtNum(ev.metrics[bt].mase, 4) : "n/a", "", bt ? "Model: " + bt : "") +
+        '</div>' +
+        tbl(["Model", "Train Parameter", "Test MASE", "Test MSE", "Test MAD", "Test RMSSE", "MAPE", "WAPE"], testMetricRows) +
+        '<div class="card" style="margin-top:12px;">' +
+          '<div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">Actual vs One-Step-Ahead Forecast &mdash; Test Period (' + esc(xlBest) + ')</div>' +
+          evalChartSvg(ev, xlBest) +
+          '<div style="font-size:11px;color:var(--faint);margin-top:6px;"><span style="color:var(--accent);font-weight:700;">&#9632;</span> Actual Test Demand &nbsp; <span style="color:var(--teal);font-weight:700;">&#9679;</span> One-Step Forecast (' + esc(xlBest) + ')</div>' +
+        '</div>' +
+        '<details class="card" style="margin-top:12px;">' +
+          '<summary style="font-weight:600;font-size:12.5px;cursor:pointer;color:var(--muted);">Test Period Comparison Table (' + tableRows.length + ' months)</summary>' +
+          '<div style="margin-top:10px;max-height:340px;overflow:auto;border-radius:6px;">' +
+            tbl(["Test Month", "Actual Demand", "Croston", "SBA", "TSB", "Residual (" + esc(xlBest) + ")"], tableRows) +
+          '</div>' +
+        '</details>' +
+        (bt ? evalCompareNote(bt, xlBest, "MASE terendah pada data Test") : '') +
+      '</div>'
+    );
   }
 
   var rowsHtml = ["Croston", "SBA", "TSB"].map(function (k) {
-    var r = ev.results[k], isXl = k === xlBest;
+    var r = ev.results[k];
+    var labels = [];
+    if (k === ev.bestAbs) labels.push('<span class="tag tag-active" style="margin-left:6px;">Lowest Error</span>');
+    if (k === xlBest) labels.push('<span class="tag tag-muted" style="margin-left:4px;">Selected</span>');
     var pct = r.pct === null ? '<span style="color:var(--faint);">n/a</span>' : fmtNum(r.pct, 1) + '%';
     return tr([
-      '<strong>' + k + '</strong>' + (isXl ? ' <span style="font-size:10.5px;font-weight:700;color:var(--accent);">METODE UTAMA</span>' : '') + (k === ev.bestAbs ? ' <span style="font-size:10.5px;font-weight:700;color:var(--teal);">SELISIH TERKECIL</span>' : ''),
-      k === "TSB" ? "&beta; = " + fmtNum(ev.params.TSB, 4) : "&alpha; = " + fmtNum(ev.params[k], 4),
+      '<strong>' + k + '</strong>' + labels.join(''),
+      '<span class="mono">' + (k === "TSB" ? "&beta; = " + fmtNum(ev.params.TSB, 4) : "&alpha; = " + fmtNum(ev.params[k], 4)) + '</span>',
       '<span class="mono" style="font-weight:600;">' + fmtNum(r.forecast, 4) + '</span>',
       '<span class="mono" style="font-weight:600;">' + fmtNum(ev.actual, 4) + '</span>',
       '<span class="mono">' + fmtNum(r.diff, 4) + '</span>',
       '<span class="mono">' + fmtNum(r.absErr, 4) + '</span>',
-      pct
+      '<span class="mono">' + pct + '</span>'
     ]);
   });
-  return '<div class="section">' +
-    '<div class="section-head"><div><div class="section-title">Evaluasi &mdash; Forecast vs Demand Aktual Terakhir (rentang data &le; 5 tahun)</div>' +
-    '<div class="section-desc">Rentang data ' + spanText(N) + ' (&le; 60 bulan). Model dilatih dari awal data hingga bulan sebelum demand aktual terakhir (bulan nol dipertahankan), lalu dievaluasi terhadap demand aktual terakhir.</div></div></div>' + sepNote + warnHtml +
-    '<div class="grid grid-4" style="margin-bottom:14px;">' +
-      kpiCard("Data Train", ev.trainSize, "bulan", fmtMonth(ev.trainRange[0]) + " &ndash; " + fmtMonth(ev.trainRange[1]) + " &middot; " + ev.nzTrain + " kejadian") +
-      kpiCard("Target Demand Terakhir", fmtMonth(ev.targetMonth), "", "tidak ikut Train" + (ev.trailingZeros > 0 ? " &middot; " + ev.trailingZeros + " bln nol sesudahnya" : "")) +
-      kpiCard("Demand Aktual Target", fmtNum(ev.actual, 4), "", "nilai aktual pembanding") +
-      paramCard +
-    '</div>' +
-    '<div style="overflow-x:auto;">' + tbl(["Metode", "Parameter (dari Train)", "Forecast Bulan Target", "Demand Aktual", "Selisih", "Selisih Absolut", "% Error"], rowsHtml) + '</div>' +
-    evalCompareNote(ev.bestAbs, xlBest, "selisih absolut terkecil pada bulan target") +
-  '</div>';
+
+  return (
+    '<div style="margin-top:16px;">' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">Out-of-Sample Evaluation: Last Actual Demand (&le; 60 Months)</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Rentang data ' + spanText(N) + '. Model dilatih hingga bulan sebelum demand aktual terakhir (bulan nol dipertahankan), lalu dievaluasi terhadap demand aktual terakhir tanpa data leakage.</div>' +
+      warnHtml +
+      '<div class="grid grid-4" style="margin-bottom:12px;">' +
+        kpiCard("Train Window", ev.trainSize, "months", fmtMonth(ev.trainRange[0]) + " &ndash; " + fmtMonth(ev.trainRange[1]) + " &middot; " + ev.nzTrain + " events") +
+        kpiCard("Target Month", fmtMonth(ev.targetMonth), "", "excluded from Train" + (ev.trailingZeros > 0 ? " &middot; " + ev.trailingZeros + " trailing zero mo" : "")) +
+        kpiCard("Target Actual Demand", fmtNum(ev.actual, 4), "", "reference actual value") +
+        kpiCard("Train-Only Parameters", '<span class="mono" style="font-size:14px;">' + paramText + '</span>', "", "Croston / SBA / TSB") +
+      '</div>' +
+      tbl(["Model", "Train Parameter", "Target Forecast", "Actual Demand", "Difference", "Abs Error", "% Error"], rowsHtml) +
+      evalCompareNote(ev.bestAbs, xlBest, "selisih absolut terkecil pada bulan target") +
+    '</div>'
+  );
 }
 
-function renderDetail() {
+function renderMaterialAnalysis() {
   var m = mat();
-  if (!m) return emptyBox("Tidak ada material", "Pilih atau unggah dataset terlebih dahulu.");
+  if (!m) return emptyBox("Tidak ada material aktif", "Pilih atau unggah dataset pada halaman Data Management.");
+  var valRes = SystemValidator.validateMaterialAnalysis(state.selected, m);
   var cv = classColorVar(m.classification);
   var maxVal = Math.max.apply(null, m.data.map(function (d) { return d[1]; }).concat([1]));
+  var nzValues = m.data.filter(function (d) { return d[1] > 0; }).map(function (d) { return d[1]; });
+  var totalQty = nzValues.reduce(function (s, v) { return s + v; }, 0);
+  var meanNz = nzValues.length ? totalQty / nzValues.length : 0;
+  var zeroPct = m.data.length ? ((m.data.length - nzValues.length) / m.data.length * 100) : 0;
+  var optParam = m.bestMethod === "Croston" ? m.alphaC : m.bestMethod === "SBA" ? m.alphaS : m.betaT;
+  var optLabel = m.bestMethod === "TSB" ? "&beta;" : "&alpha;";
+
+  var inSampleRows = ["Croston", "SBA", "TSB"].map(function (method) {
+    var isBest = method === m.bestMethod;
+    var met = m.metrics[method];
+    var param = method === "Croston" ? m.alphaC : method === "SBA" ? m.alphaS : m.betaT;
+    return tr([
+      '<strong>' + method + '</strong>' + (isBest ? ' <span class="tag tag-active" style="margin-left:6px;">Selected</span>' : ''),
+      '<span class="mono">' + (method === "TSB" ? "&beta; = " : "&alpha; = ") + fmtNum(param, 4) + '</span>',
+      '<span class="mono" style="font-weight:700;">' + fmtNum(met.mase, 4) + '</span>',
+      '<span class="mono">' + fmtNum(met.mse, 4) + '</span>',
+      '<span class="mono">' + fmtNum(met.mad, 4) + '</span>',
+      '<span class="mono">' + fmtNum(met.rmsse, 4) + '</span>',
+      '<span class="mono">' + pctFmt(met.mape) + '</span>',
+      '<span class="mono">' + pctFmt(met.smape) + '</span>',
+      '<span class="mono">' + pctFmt(met.wape) + '</span>'
+    ]);
+  });
+
+  var profileHtml =
+    '<div class="card">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:14px;">' +
+        '<div>' +
+          '<div class="mono" style="font-size:12px;color:var(--muted);">Stock Code: ' + esc(state.selected) + '</div>' +
+          '<div style="font-size:19px;font-weight:700;margin-top:2px;">' + esc(m.name) + '</div>' +
+        '</div>' +
+        '<span class="tag" style="background:var(--' + cv + '-dim);color:var(--' + cv + ');font-size:12.5px;padding:4px 10px;"><span class="tag-dot" style="background:var(--' + cv + ');"></span>' + esc(m.classification) + '</span>' +
+      '</div>' +
+      '<div class="grid grid-4">' +
+        '<div><div class="kpi-label">Active Dataset</div><div style="font-weight:600;font-size:13px;">' + esc(activeDatasetLabel()) + '</div></div>' +
+        '<div><div class="kpi-label">Historical Period</div><div class="mono" style="font-weight:600;font-size:13px;">' + esc(m.data[0][0]) + ' &ndash; ' + esc(m.data[m.data.length - 1][0]) + '</div></div>' +
+        '<div><div class="kpi-label">Observations / Demand Events</div><div class="mono" style="font-weight:600;font-size:13px;">' + m.data.length + ' mo / ' + nzValues.length + ' events</div></div>' +
+        '<div><div class="kpi-label">Total Historical Quantity</div><div class="mono" style="font-weight:600;font-size:13px;">' + fmtNum(totalQty, 2) + '</div></div>' +
+      '</div>' +
+    '</div>';
+
+  var histHtml =
+    '<div class="card">' +
+      '<div class="bars-wrap">' +
+        m.data.map(function (d) {
+          var h = d[1] > 0 ? Math.max(4, (d[1] / maxVal) * 120) : 2;
+          return '<div class="bar" title="' + esc(d[0]) + ': ' + d[1] + '" style="width:' + Math.max(2, Math.min(9, 640 / m.data.length)) + 'px;height:' + h + 'px;background:' + (d[1] > 0 ? 'var(--accent)' : 'var(--border-strong)') + ';"></div>';
+        }).join('') +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:var(--faint);" class="mono">' +
+        '<span>' + esc(m.data[0][0]) + '</span><span>Max monthly demand: ' + fmtNum(maxVal, 2) + '</span><span>' + esc(m.data[m.data.length - 1][0]) + '</span>' +
+      '</div>' +
+    '</div>';
+
+  var charAndClassHtml =
+    '<div class="grid grid-2 section">' +
+      '<div class="card">' +
+        '<div class="section-title" style="margin-bottom:3px;">Demand Characteristics</div>' +
+        '<div class="section-desc" style="margin-bottom:12px;">Karakteristik interval dan variabilitas permintaan aktual historis.</div>' +
+        metricRow("ADI (Average Inter-Demand Interval)", fmtNum(m.adi, 4) + " months", true) +
+        metricRow("CV&sup2; (Squared Coefficient of Variation)", fmtNum(m.cv2, 4), true) +
+        metricRow("Mean Non-Zero Demand", fmtNum(meanNz, 4), false) +
+        metricRow("Zero-Demand Proportion", fmtNum(zeroPct, 1) + "% (" + (m.data.length - nzValues.length) + " of " + m.data.length + " mo)", false) +
+      '</div>' +
+      '<div class="card">' +
+        '<div class="section-title" style="margin-bottom:3px;">Demand Classification</div>' +
+        '<div class="section-desc" style="margin-bottom:8px;">Klasifikasi pola permintaan Syntetos-Boylan (ambang batas ADI = 1,32; CV&sup2; = 0,49).</div>' +
+        '<div class="quad-grid">' +
+          '<div class="quad-cell' + (m.classification === "Erratic" ? ' active' : '') + '"><div>Erratic</div><div class="mono" style="font-size:10.5px;">ADI &le; 1,32 &middot; CV&sup2; &gt; 0,49</div></div>' +
+          '<div class="quad-cell' + (m.classification === "Lumpy" ? ' active' : '') + '"><div>Lumpy</div><div class="mono" style="font-size:10.5px;">ADI &gt; 1,32 &middot; CV&sup2; &gt; 0,49</div></div>' +
+          '<div class="quad-cell' + (m.classification === "Smooth" ? ' active' : '') + '"><div>Smooth</div><div class="mono" style="font-size:10.5px;">ADI &le; 1,32 &middot; CV&sup2; &le; 0,49</div></div>' +
+          '<div class="quad-cell' + (m.classification === "Intermittent" ? ' active' : '') + '"><div>Intermittent</div><div class="mono" style="font-size:10.5px;">ADI &gt; 1,32 &middot; CV&sup2; &le; 0,49</div></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  var selectedModelHtml =
+    '<div class="grid grid-4">' +
+      kpiCard("Selected Model", esc(m.bestMethod), "", "lowest in-sample MASE") +
+      kpiCard("Optimal Parameter", fmtNum(optParam, 4), "", optLabel + " (" + esc(m.bestMethod) + ")") +
+      kpiCard("In-Sample MASE", fmtNum(m.metrics[m.bestMethod].mase, 4), "", "monthly rate: " + fmtNum(m.nextForecast, 4)) +
+      kpiCard("Next Projected Event", m.nextMonth ? fmtMonth(m.nextMonth) : "-", "", "Qty " + fmtNum(m.nextQty, 4) + " &middot; interval " + fmtNum(m.interval, 2) + " mo") +
+    '</div>';
 
   return (
     '<div class="topbar">' +
-      '<div><div class="topbar-title">Material Analysis</div><div class="topbar-sub">Klasifikasi ADI/CV&sup2;, optimasi &alpha;/&beta;, dan perbandingan metode forecasting</div></div>' +
+      '<div>' +
+        '<div class="breadcrumb">Analytics / Material Analysis</div>' +
+        '<div class="topbar-title">Material Analysis</div>' +
+        '<div class="topbar-sub">Analisis karakteristik permintaan, optimasi parameter, evaluasi model, dan Demand Projection per material</div>' +
+      '</div>' +
       materialSelector() +
     '</div>' +
     '<div class="content">' +
-      '<div class="section" style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">' +
-        '<div>' +
-          '<div class="mono" style="font-size:13px;color:var(--muted);margin-bottom:4px;">' + esc(state.selected) + '</div>' +
-          '<div style="font-size:22px;font-weight:800;">' + esc(m.name) + '</div>' +
-          '<div style="font-size:12.5px;color:var(--faint);margin-top:4px;">Data: ' + esc(m.range) + ' &middot; Dataset: ' + esc(activeDatasetLabel()) + '</div>' +
-        '</div>' +
-        '<span class="badge" style="background:var(--' + cv + '-dim);color:var(--' + cv + ');font-size:13.5px;padding:7px 16px;"><span class="badge-dot" style="background:var(--' + cv + ');"></span>' + esc(m.classification) + '</span>' +
-      '</div>' +
-      '<div class="grid grid-4 section">' +
-        kpiCard("ADI (interval rata-rata)", fmtNum(m.adi, 4), "bulan", m.adi === null ? "tidak tersedia" : (m.adi > 1.32 ? "&gt; 1,32 (jarang)" : "&le; 1,32 (rutin)")) +
-        kpiCard("CV&sup2; (variasi besaran)", fmtNum(m.cv2, 4), "", m.cv2 === null ? "tidak tersedia" : (m.cv2 > 0.49 ? "&gt; 0,49 (fluktuatif)" : "&le; 0,49 (stabil)")) +
-        kpiCard("Metode Terbaik", esc(m.bestMethod), "", m.source === "excel" ? "Baseline Excel (MASE terendah)" : "MASE in-sample terendah") +
-        kpiCard("MASE " + esc(m.bestMethod), fmtNum(m.metrics[m.bestMethod].mase, 4), "", m.metrics[m.bestMethod].mase < 1 ? "&#10003; lebih baik dari naive" : "") +
-      '</div>' +
-      '<div class="grid grid-4 section">' +
-        kpiCard("Optimal " + (m.bestMethod === "TSB" ? "&beta;" : "&alpha;") + " (" + esc(m.bestMethod) + ")", fmtNum(m.bestMethod === "Croston" ? m.alphaC : m.bestMethod === "SBA" ? m.alphaS : m.betaT, 4), "", "grid search 0,0001&ndash;1,0000") +
-        kpiCard("Forecast / Bulan", fmtNum(m.nextForecast, 4), "", "estimasi metode terbaik") +
-        kpiCard("Prediksi Kejadian Berikutnya", fmtMonth(m.nextMonth), "", "Qty &approx; " + fmtNum(m.nextQty, 4) + " &middot; interval " + fmtNum(m.interval, 2) + " bln") +
-        kpiCard("Bulan Data / Kejadian", m.data.length + " / " + countNonzero(m.data), "bln", "horizon " + m.horizonMonths + " bln (" + (m.predictions || []).length + " prediksi)") +
-      '</div>' +
-      '<div class="section">' +
-        '<div class="section-head"><div class="section-title">Riwayat Demand Bulanan (Xt aktual)</div></div>' +
-        '<div class="card">' +
-          '<div class="bars-wrap">' +
-            m.data.map(function (d) {
-              var h = d[1] > 0 ? Math.max(4, (d[1] / maxVal) * 120) : 2;
-              return '<div class="bar" title="' + esc(d[0]) + ': ' + d[1] + '" style="width:' + Math.max(2, Math.min(9, 640 / m.data.length)) + 'px;height:' + h + 'px;background:' + (d[1] > 0 ? 'var(--accent)' : 'var(--border-strong)') + ';"></div>';
-            }).join('') +
-          '</div>' +
-          '<div style="display:flex;justify-content:space-between;margin-top:10px;font-size:11px;color:var(--faint);" class="mono"><span>' + esc(m.data[0][0]) + '</span><span>' + esc(m.data[m.data.length - 1][0]) + '</span></div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="section">' +
-        '<div class="section-head"><div class="section-title">Perbandingan Metode Forecasting (In-Sample)</div>' +
-        '<div class="section-desc">Parameter &alpha;/&beta; dioptimasi dengan grid search 0,0001&ndash;1,0000 (step 0,0001, MSE one-step-ahead minimum) menggunakan rumus Croston, SBA, dan TSB terverifikasi Excel.</div></div>' +
-        '<div class="grid grid-3">' +
-          ["Croston", "SBA", "TSB"].map(function (method) {
-            var isBest = method === m.bestMethod;
-            var met = m.metrics[method];
-            var param = method === "Croston" ? m.alphaC : method === "SBA" ? m.alphaS : m.betaT;
-            return (
-              '<div class="card" style="' + (isBest ? 'border-color:var(--smooth);box-shadow:0 0 0 1px var(--smooth);' : '') + '">' +
-                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
-                  '<span style="font-weight:700;font-size:15px;">' + method + '</span>' +
-                  (isBest ? '<span style="font-size:10.5px;font-weight:700;color:var(--smooth);">TERBAIK (MASE)</span>' : '') +
-                '</div>' +
-                metricRow("MASE", fmtNum(met.mase, 4), true) +
-                metricRow("MSE", fmtNum(met.mse, 4), false) +
-                metricRow("MAD", fmtNum(met.mad, 4), false) +
-                metricRow("RMSSE", fmtNum(met.rmsse, 4), false) +
-                metricRow("MAPE", pctFmt(met.mape), false) +
-                metricRow("SMAPE", pctFmt(met.smape), false) +
-                metricRow("WAPE", pctFmt(met.wape), false) +
-                '<div style="font-size:11px;color:var(--faint);margin-top:8px;">Parameter ' + (method === "TSB" ? "&beta;" : "&alpha;") + ': <span class="mono">' + fmtNum(param, 4) + '</span></div>' +
-              '</div>'
-            );
-          }).join('') +
-        '</div>' +
-      '</div>' +
-      auditGridCard(m) +
-      renderEvaluationSection(m) +
-      sec("Statistical Forecast", "Proyeksi kejadian demand ke depan untuk material terpilih.", statTableFor(state.selected), T_STAT) +
+      renderValidationFeedback(valRes) +
+      sec("Material Profile", "", profileHtml) +
+      sec("Historical Demand", "Riwayat kuantitas permintaan bulanan aktual (Xt).", histHtml) +
+      charAndClassHtml +
+      sec("Parameter Optimization", "Optimasi parameter smoothing pada rentang 0,0001&ndash;1,0000 (step 0,0001) dengan objektif minimum one-step-ahead MSE.", parameterOptimizationTable(m)) +
+      sec("Model Performance", "Perbandingan akurasi model in-sample (Croston, SBA, TSB) beserta evaluasi out-of-sample tanpa data leakage.",
+        tbl(["Model", "Parameter", "MASE", "MSE", "MAD", "RMSSE", "MAPE", "SMAPE", "WAPE"], inSampleRows) +
+        renderOutOfSampleBlock(m)
+      ) +
+      sec("Selected Forecasting Model", "Ringkasan model terbaik yang ditetapkan untuk menghasilkan Demand Projection material ini.", selectedModelHtml) +
+      sec("Demand Projection", "Proyeksi kejadian permintaan untuk material terpilih (bersumber langsung dari hasil perhitungan bersama).",
+        projectionTableFor(state.selected) +
+        '<div style="margin-top:10px;"><button class="btn-ghost btn-sm" data-action="goto" data-page="demand-forecasting">Open Full Timeline in Demand Forecasting</button></div>',
+        T_PROJECTION
+      ) +
     '</div>'
   );
 }
 
 /* ============================================================
-   RENDER: STATISTICAL FORECAST
+   RENDER: DEMAND FORECASTING
+   Sections: Forecast Configuration, Forecast Summary,
+             Material Demand Projection, Forecast Results
    ============================================================ */
-function renderForecast() {
+function renderDemandForecasting() {
   var m = mat();
-  if (!m) return emptyBox("Tidak ada material", "");
+  if (!m) return emptyBox("Tidak ada material aktif", "Pilih atau unggah dataset pada halaman Data Management.");
+  var valRes = SystemValidator.validateDemandForecasting(state.materials);
   var N = m.data.length;
   var lastIdx = monthToIndex(m.data[N - 1][0]);
+  var horizon = m.horizonMonths || N;
   var preds = (m.predictions || []).map(function (p) { return { m: p[0], idx: monthToIndex(p[0]), qty: p[1] }; });
   var param = m.bestMethod === "Croston" ? m.alphaC : m.bestMethod === "SBA" ? m.alphaS : m.betaT;
   var pname = m.bestMethod === "TSB" ? "&beta;" : "&alpha;";
-  var W = 900, H = 230, pad = 8, bot = 22, top = 14, bw = (W - pad * 2) / (2 * N);
+
+  var W = 900, H = 220, pad = 8, bot = 22, top = 14, bw = (W - pad * 2) / (N + horizon);
   var maxV = Math.max.apply(null, m.data.map(function (d) { return d[1]; }).concat(preds.map(function (p) { return p.qty; }), [1]));
   function hh(v) { return Math.max(3, (v / maxV) * (H - bot - top)); }
   var bars = "";
@@ -2013,263 +2933,72 @@ function renderForecast() {
   var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;">' +
     '<line x1="' + pad + '" y1="' + (H - bot) + '" x2="' + (W - pad) + '" y2="' + (H - bot) + '" stroke="var(--border-strong)"/>' + bars +
     '<line x1="' + bx + '" y1="' + top + '" x2="' + bx + '" y2="' + (H - bot) + '" stroke="var(--faint)" stroke-dasharray="4 3"/>' +
-    '<text x="' + (bx - 6) + '" y="' + (top + 8) + '" text-anchor="end" font-size="11" fill="var(--faint)">Historis</text>' +
-    '<text x="' + (bx + 6) + '" y="' + (top + 8) + '" font-size="11" fill="var(--faint)">Forecast</text>' +
+    '<text x="' + (bx - 6) + '" y="' + (top + 8) + '" text-anchor="end" font-size="11" fill="var(--faint)">Historical</text>' +
+    '<text x="' + (bx + 6) + '" y="' + (top + 8) + '" font-size="11" fill="var(--faint)">Projected</text>' +
     '<text x="' + pad + '" y="' + (H - 6) + '" font-size="10.5" fill="var(--faint)">' + esc(m.data[0][0]) + '</text>' +
-    '<text x="' + (W - pad) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10.5" fill="var(--faint)">' + esc(indexToMonth(lastIdx + N)) + '</text></svg>';
+    '<text x="' + (W - pad) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10.5" fill="var(--faint)">' + esc(indexToMonth(lastIdx + horizon)) + '</text></svg>';
 
   var byYear = {};
   preds.forEach(function (p) { var y = p.m.slice(0, 4); byYear[y] = byYear[y] || { n: 0, q: 0 }; byYear[y].n++; byYear[y].q += p.qty; });
   var yrs = Object.keys(byYear).sort();
 
-  return (
-    '<div class="topbar"><div><div class="topbar-title">Statistical Forecast</div><div class="topbar-sub">Proyeksi permintaan aktual &rarr; forecast untuk dataset aktif: <strong>' + esc(activeDatasetLabel()) + '</strong></div></div>' + materialSelector() + '</div>' +
-    '<div class="content">' +
-      '<div class="grid grid-4 section">' +
-        kpiCard("Metode Terpilih", esc(m.bestMethod), "", "MASE in-sample terendah") +
-        kpiCard("Parameter", fmtNum(param, 4), "", pname + " " + esc(m.bestMethod)) +
-        kpiCard("Horizon", N + " bulan", "", "= jumlah bulan historis") +
-        kpiCard("Periode Forecast", fmtMonth(indexToMonth(lastIdx + 1)), "", "s.d. " + fmtMonth(indexToMonth(lastIdx + N))) +
-      '</div>' +
-      '<div class="section"><div class="section-head"><div class="section-title">Aktual &rarr; Forecast</div></div><div class="card">' + svg +
-        '<div style="font-size:11px;color:var(--faint);margin-top:8px;"><span style="color:var(--accent);font-weight:700;">&#9632;</span> demand aktual (' + N + ' bulan) &nbsp; <span style="color:var(--teal);font-weight:700;">&#9632;</span> kejadian demand prediksi</div></div></div>' +
-      '<div class="section"><div class="section-head"><div class="section-title">Ringkasan per Tahun</div></div>' +
-        (preds.length ? '<div class="card"><table style="width:100%;font-size:12.5px;border-collapse:collapse;"><tr style="text-align:left;color:var(--muted);"><th style="padding:6px 0;">Tahun</th><th>Kejadian demand</th><th>Total qty</th></tr>' +
-          yrs.map(function (y) { return '<tr style="border-top:1px solid var(--border);"><td style="padding:7px 0;" class="mono">' + esc(y) + '</td><td>' + byYear[y].n + '</td><td class="mono">' + fmtNum(byYear[y].q, 2) + '</td></tr>'; }).join('') +
-          '</table><div style="font-size:11px;color:var(--faint);margin-top:8px;">Kejadian: ' + preds.map(function (p) { return esc(p.m); }).join(', ') + '</div></div>'
-        : emptyBox("Tidak ada kejadian demand diprediksi pada horizon ini", "")) +
-      '</div>' +
-      sec("Tabel Statistical Forecast", "Material terpilih: " + esc(state.selected) + " &mdash; metode " + esc(m.bestMethod), statTableFor(state.selected), T_STAT) +
-      sec("Ringkasan Forecast Semua Material (" + codes().length + " material)", "1 baris per material (klik baris untuk menampilkan grafik & jadwal bulanannya di atas).",
-        '<div style="margin-bottom:10px;"><input class="field" id="fc-search" type="search" placeholder="Cari kode atau nama material..." value="' + esc(state.searchQuery) + '" style="width:260px;"></div>' + allForecastTable()) +
-    '</div>'
-  );
-}
-
-/* ============================================================
-   RENDER: UPLOAD & PROSES (DYNAMIC EXCEL/CSV -> BACKEND -> FIREBASE)
-   ============================================================ */
-function renderData() {
-  return (
-    '<div class="topbar">' +
-      '<div><div class="topbar-title">Upload &amp; Proses Forecasting</div><div class="topbar-sub">Unggah file Excel (.xlsx, .xlsm) atau CSV untuk analisis forecasting dinamis &amp; penyimpanan permanen ke akun Anda</div></div>' +
-      '<div style="display:flex;align-items:center;gap:8px;">' +
-        '<span id="bb-conn-pill" class="badge badge-history"><span class="badge-dot" style="background:var(--muted);"></span>Menghubungkan...</span>' +
-        '<button class="btn-ghost btn-sm" id="bb-check" style="display:none;">Coba Hubungkan Ulang</button>' +
-      '</div>' +
-    '</div>' +
-    '<div class="content">' +
-      '<div class="section">' +
-        '<div class="callout">' +
-          '<span>&#9432;</span>' +
-          '<span><strong>Workspace Permanen &amp; Sinkron Lintas Perangkat:</strong> File yang Anda unggah akan divalidasi secara otomatis (mendukung jumlah material dinamis: 8, 20, 50, 100+), dihitung menggunakan metode ADI/CV&sup2;, grid search 0,0001, Croston/SBA/TSB, serta evaluasi tanpa data leakage, lalu disimpan permanen ke akun Anda dan tersinkron otomatis di perangkat lain.</span>' +
-        '</div>' +
-      '</div>' +
-      '<div class="section">' +
-        '<div class="section-head"><div class="section-title">Unggah &amp; Validasi File Excel / CSV</div><div class="section-desc">Kolom yang dikenali otomatis: <span class="mono">kode / stock_code</span>, <span class="mono">nama / material</span>, <span class="mono">bulan / periode (YYYY-MM / tanggal Excel)</span>, <span class="mono">qty / demand / iss</span>. Setiap upload membuat record dataset baru tanpa menimpa history sebelumnya.</div></div>' +
-        '<div class="card">' +
-          '<div class="upload-zone" id="bb-dropzone">' +
-            '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">Tarik file Excel (.xlsx, .xlsm) atau CSV ke sini, atau</div>' +
-            '<button class="btn" id="bb-pick"' + (bb.busy || bb.uploading ? ' disabled' : '') + '>Pilih File Excel / CSV</button>' +
-            '<input type="file" id="bb-file" accept=".xlsx,.xlsm,.csv" style="display:none;">' +
-            '<div style="font-size:11.5px;color:var(--faint);margin-top:10px;">File asli tidak akan diubah. Ringkasan validasi akan ditampilkan sebelum proses forecasting dijalankan.</div>' +
-          '</div>' +
-          '<div id="bb-status" style="margin-top:12px;font-size:12.5px;color:var(--muted);display:none;"></div>' +
-          '<div id="bb-progress" style="margin-top:10px;display:none;"></div>' +
-          '<div id="bb-report"></div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="section">' +
-        '<details class="card">' +
-          '<summary style="font-weight:600;font-size:13px;cursor:pointer;color:var(--muted);">Mode Preview Offline CSV (sementara, tidak disimpan ke akun)</summary>' +
-          '<div style="margin-top:12px;">' +
-            '<div class="callout warn" style="margin-bottom:12px;"><span>&#9888;</span><span>Opsi ini hanya untuk inspeksi lokal sementara bila sedang offline. Hasil preview lokal <strong>tidak disimpan ke akun</strong> dan akan kembali ke dataset aktif saat halaman dimuat ulang.</span></div>' +
-            '<button class="btn-ghost btn-sm" data-action="browse-csv">Pilih CSV untuk Preview Lokal</button>' +
-            '<input type="file" id="csv-input" accept=".csv" style="display:none;">' +
-            '<div id="upload-status" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>' +
-          '</div>' +
-        '</details>' +
-      '</div>' +
-    '</div>'
-  );
-}
-
-/* ============================================================
-   RENDER: DATASETS & HISTORY PER AKUN FIREBASE
-   ============================================================ */
-function renderDatasets() {
-  var datasets = state.datasets || [];
-  var detailDs = state.detailDatasetId ? datasets.find(function (d) { return d.datasetId === state.detailDatasetId; }) : null;
-
-  var baselineCard =
-    '<div class="card section" style="' + (isBaselineActive() ? 'border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);' : '') + '">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;">' +
-        '<div>' +
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<span style="font-weight:700;font-size:15px;">Baseline Awal &mdash; 8 Material Uji Excel</span>' +
-            '<span class="badge badge-baseline">Baseline Permanen</span>' +
-            (isBaselineActive() ? '<span class="badge badge-active">Sedang Aktif</span>' : '') +
-          '</div>' +
-          '<div style="font-size:12.5px;color:var(--muted);margin-top:4px;">Data referensi terverifikasi (8 material, periode 2020-01 s.d. 2026-01). Tidak dapat dihapus permanen dan selalu dapat diaktifkan kembali kapan saja.</div>' +
-        '</div>' +
-        '<div>' +
-          (isBaselineActive()
-            ? '<span style="font-size:12px;color:var(--smooth);font-weight:600;">&#10003; Aktif di dashboard</span>'
-            : '<button class="btn-ghost btn-sm" data-action="activate-dataset" data-id="baseline">Aktifkan Baseline Awal</button>') +
-        '</div>' +
+  var configHtml =
+    '<div class="card">' +
+      '<div class="grid grid-4" style="font-size:12.5px;">' +
+        '<div><div class="kpi-label">Active Dataset</div><div style="font-weight:600;">' + esc(activeDatasetLabel()) + '</div></div>' +
+        '<div><div class="kpi-label">Horizon Policy</div><div style="font-weight:600;">Equal to Historical Length (' + horizon + ' mo)</div></div>' +
+        '<div><div class="kpi-label">Model Selection Basis</div><div style="font-weight:600;">Lowest In-Sample MASE</div></div>' +
+        '<div><div class="kpi-label">Parameter Grid</div><div class="mono" style="font-weight:600;">0,0001&ndash;1,0000 (step 0,0001)</div></div>' +
       '</div>' +
     '</div>';
 
-  var historyHtml = !datasets.length
-    ? emptyBox("Belum ada riwayat dataset yang diunggah", "Unggah file Excel (.xlsx/.xlsm) atau CSV pada halaman Upload &amp; Proses untuk membuat workspace dataset pertama Anda.")
-    : tbl(
-        ["Status", "Nama Dataset", "File Asli", "Material", "Rentang Periode", "Waktu Upload", "Aksi"],
-        datasets.map(function (ds) {
-          var isAct = ds.datasetId === state.activeDatasetId && !state.localPreviewOnly;
-          var badge = isAct
-            ? '<span class="badge badge-active">Dataset Aktif</span>'
-            : ds.status === "completed"
-              ? '<span class="badge badge-history">Historis</span>'
-              : ds.status === "failed"
-                ? '<span class="badge badge-error">Gagal</span>'
-                : '<span class="badge badge-warn">Diproses</span>';
+  var summaryHtml =
+    '<div class="grid grid-4">' +
+      kpiCard("Selected Model", esc(m.bestMethod), "", "Stock Code " + esc(state.selected)) +
+      kpiCard("Optimal Parameter", fmtNum(param, 4), "", pname + " (" + esc(m.bestMethod) + ")") +
+      kpiCard("Forecast Horizon", horizon + " months", "", fmtMonth(indexToMonth(lastIdx + 1)) + " &ndash; " + fmtMonth(indexToMonth(lastIdx + horizon))) +
+      kpiCard("Projected Demand Events", preds.length, "events", m.nextMonth ? "Next: " + fmtMonth(m.nextMonth) + " (Qty " + fmtNum(m.nextQty, 4) + ")" : "No events in horizon") +
+    '</div>';
 
-          var actions = '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
-          if (ds.status === "completed" && !isAct) {
-            actions += '<button class="btn btn-sm" data-action="activate-dataset" data-id="' + esc(ds.datasetId) + '">Aktifkan</button>';
-          }
-          actions += '<button class="btn-ghost btn-sm" data-action="toggle-ds-detail" data-id="' + esc(ds.datasetId) + '">' + (state.detailDatasetId === ds.datasetId ? 'Tutup Detail' : 'Detail') + '</button>';
-          if (ds.storagePath) {
-            actions += '<button class="btn-ghost btn-sm" data-action="download-ds" data-id="' + esc(ds.datasetId) + '">Unduh File</button>';
-          }
-          actions += '<button class="btn-danger" data-action="delete-ds" data-id="' + esc(ds.datasetId) + '">Hapus</button>';
-          actions += '</div>';
+  var annualBlock = preds.length
+    ? '<div style="margin-top:12px;">' +
+        tbl(["Year", "Projected Events", "Total Projected Quantity"], yrs.map(function (y) {
+          return tr(['<span class="mono">' + esc(y) + '</span>', '<span class="mono">' + byYear[y].n + '</span>', '<span class="mono" style="font-weight:600;">' + fmtNum(byYear[y].q, 4) + '</span>']);
+        })) +
+      '</div>'
+    : '';
 
-          return tr([
-            badge,
-            '<div style="font-weight:600;">' + esc(ds.name || ds.datasetId) + '</div><div class="mono" style="font-size:10.5px;color:var(--faint);">' + esc(ds.datasetId) + '</div>',
-            '<span class="mono" style="font-size:12px;">' + esc(ds.originalFilename || "-") + '</span>',
-            '<span class="mono" style="font-weight:600;">' + (ds.materialCount || 0) + '</span>',
-            '<span class="mono" style="font-size:12px;">' + esc(ds.periodMin || "-") + ' &ndash; ' + esc(ds.periodMax || "-") + '</span>',
-            '<span style="font-size:12px;color:var(--muted);">' + esc(fmtDateTime(ds.uploadedAt)) + '</span>',
-            actions
-          ]);
-        })
-      );
+  var projectionBody =
+    '<div class="card" style="margin-bottom:12px;">' +
+      '<div style="font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:8px;">Historical vs Projected Demand Timeline &mdash; ' + esc(state.selected) + ' (' + esc(m.name) + ')</div>' +
+      svg +
+      '<div style="font-size:11px;color:var(--faint);margin-top:8px;"><span style="color:var(--accent);font-weight:700;">&#9632;</span> Historical Demand (' + N + ' months) &nbsp; <span style="color:var(--teal);font-weight:700;">&#9632;</span> Projected Demand Events (' + preds.length + ' events)</div>' +
+    '</div>' +
+    projectionTableFor(state.selected) +
+    annualBlock;
 
-  var detailHtml = "";
-  if (detailDs) {
-    var sr = detailDs.summaryResults || {};
-    var cc = sr.classificationCounts || {};
-    var mc = sr.bestMethodCounts || {};
-    var fc = detailDs.forecastingConfig || {};
-    detailHtml =
-      '<div class="card section" style="border-color:var(--accent);">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
-          '<div><div style="font-size:15px;font-weight:700;">Detail Dataset: ' + esc(detailDs.name || detailDs.datasetId) + '</div><div class="mono" style="font-size:11.5px;color:var(--muted);">ID: ' + esc(detailDs.datasetId) + ' &middot; File: ' + esc(detailDs.originalFilename || "-") + '</div></div>' +
-          '<button class="btn-ghost btn-sm" data-action="toggle-ds-detail" data-id="' + esc(detailDs.datasetId) + '">Tutup</button>' +
-        '</div>' +
-        (detailDs.errorMessage ? '<div class="callout err" style="margin-bottom:12px;"><span>&#9888;</span><span>Error: ' + esc(detailDs.errorMessage) + '</span></div>' : '') +
-        '<div class="grid grid-3">' +
-          '<div style="font-size:12.5px;">' +
-            '<div style="font-weight:700;margin-bottom:6px;">Metadata Upload</div>' +
-            metricRow("Status", esc(detailDs.status || "-"), true) +
-            metricRow("Waktu Upload", esc(fmtDateTime(detailDs.uploadedAt)), false) +
-            metricRow("Waktu Selesai", esc(fmtDateTime(detailDs.completedAt)), false) +
-            metricRow("Jumlah Material", detailDs.materialCount || 0, false) +
-            metricRow("Periode", esc((detailDs.periodMin || "-") + " s.d. " + (detailDs.periodMax || "-")), false) +
-          '</div>' +
-          '<div style="font-size:12.5px;">' +
-            '<div style="font-weight:700;margin-bottom:6px;">Ringkasan Hasil</div>' +
-            metricRow("Lumpy / Intermittent", (cc.Lumpy || 0) + " / " + (cc.Intermittent || 0), false) +
-            metricRow("Erratic / Smooth", (cc.Erratic || 0) + " / " + (cc.Smooth || 0), false) +
-            metricRow("Terbaik: Croston / SBA / TSB", (mc.Croston || 0) + " / " + (mc.SBA || 0) + " / " + (mc.TSB || 0), false) +
-            metricRow("Train/Test 50:50 (&gt;60 bln)", sr.evalTrainTestCount || 0, false) +
-            metricRow("Demand Terakhir (&le;60 bln)", sr.evalLastDemandCount || 0, false) +
-          '</div>' +
-          '<div style="font-size:12.5px;">' +
-            '<div style="font-weight:700;margin-bottom:6px;">Konfigurasi Forecasting</div>' +
-            metricRow("Formula", esc(fc.formulaVersion || "excel-verified-v1"), false) +
-            metricRow("Grid Step", fmtNum(fc.gridStep || 0.0001, 4), false) +
-            metricRow("Objektif Optimasi", "MSE one-step-ahead", false) +
-            metricRow("Seleksi Metode", "MASE terendah", false) +
-            metricRow("Arsip Storage", detailDs.storagePath ? "Tersedia" : "Tidak ada", false) +
-          '</div>' +
-        '</div>' +
-      '</div>';
-  }
+  var resultsBody =
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">' +
+      '<input class="field" id="fc-search" type="search" placeholder="Search stock code or material..." value="' + esc(state.searchQuery) + '" style="width:260px;">' +
+      '<button class="btn-ghost btn-sm" data-action="export-forecast">Export Forecast Results CSV</button>' +
+    '</div>' +
+    forecastResultsTable();
 
   return (
     '<div class="topbar">' +
-      '<div><div class="topbar-title">Datasets &amp; History</div><div class="topbar-sub">Riwayat workspace permanen akun <strong>' + esc(state.user ? state.user.email : "") + '</strong> &middot; tersinkron real-time lintas perangkat</div></div>' +
-      '<button class="btn btn-sm" data-action="goto" data-page="data">+ Upload Dataset Baru</button>' +
+      '<div>' +
+        '<div class="breadcrumb">Analytics / Demand Forecasting</div>' +
+        '<div class="topbar-title">Demand Forecasting</div>' +
+        '<div class="topbar-sub">Proyeksi permintaan material dan ringkasan hasil forecasting untuk <strong>' + esc(activeDatasetLabel()) + '</strong></div>' +
+      '</div>' +
+      materialSelector() +
     '</div>' +
     '<div class="content">' +
-      baselineCard +
-      detailHtml +
-      sec("Riwayat Upload Akun Anda (" + datasets.length + " dataset)", "Pilih dataset historis untuk membuka kembali seluruh hasil forecasting tanpa perlu upload ulang atau menghitung ulang.", historyHtml) +
-    '</div>'
-  );
-}
-
-/* ============================================================
-   RENDER: VALIDATION / AUDIT
-   ============================================================ */
-function renderAudit() {
-  var m = mat();
-  var allCodes = codes();
-  var shownCodes = allCodes.slice(0, 100);
-  var rowsF = shownCodes.map(function (c) {
-    var x = state.materials[c], n = x.data.length, gaps = 0;
-    for (var i = 1; i < n; i++) gaps += monthToIndex(x.data[i][0]) - monthToIndex(x.data[i - 1][0]) - 1;
-    var b = x.metrics[x.bestMethod], li = monthToIndex(x.data[n - 1][0]);
-    return tr([
-      '<span class="mono">' + esc(c) + '</span>',
-      n,
-      gaps === 0 ? '0 &#10003;' : '<span style="color:var(--lumpy);">' + gaps + '</span>',
-      x.data.filter(function (d) { return d[1] === 0; }).length,
-      countNonzero(x.data),
-      fmtNum(x.adi, 3),
-      fmtNum(x.cv2, 4),
-      esc(x.classification),
-      fmtNum(x.alphaC, 4),
-      fmtNum(x.alphaS, 4),
-      fmtNum(x.betaT, 4),
-      fmtNum(b.mse, 5),
-      fmtNum(b.mad, 4),
-      fmtNum(b.mase, 4),
-      fmtNum(b.rmsse, 4),
-      esc(evalSummaryText(x)),
-      '<strong>' + esc(x.bestMethod) + '</strong>',
-      x.horizonMonths + ' bln',
-      fmtMonth(indexToMonth(li + 1)) + ' &ndash; ' + fmtMonth(indexToMonth(li + x.horizonMonths)),
-      (x.predictions || []).length
-    ]);
-  });
-
-  var okTag = function (ok) { return ok ? '<span style="color:var(--smooth);font-weight:700;">OK</span>' : '<span style="color:var(--medium);font-weight:700;">PERIKSA</span>'; };
-  var integ = state.integrity.checks.map(function (c) { return tr([c.name, esc(c.res), okTag(c.ok)]); });
-  integ.push(tr(["Firebase Authentication UID", esc(state.user ? state.user.uid : "-"), okTag(!!state.user)]));
-  integ.push(tr(["Sinkronisasi Real-Time Firestore (onSnapshot)", state.syncLive ? "Aktif — perubahan lintas perangkat terdeteksi otomatis" : "Tidak aktif", okTag(state.syncLive)]));
-  integ.push(tr(["Dataset Aktif Saat Ini", esc(activeDatasetLabel()) + " (" + allCodes.length + " material)", okTag(!state.localPreviewOnly)]));
-  integ.push(tr(["Status Koneksi Layanan Forecasting", bb.online ? "Terkoneksi" : "Belum terhubung / belum dicek", okTag(!!bb.online)]));
-  var sCfg = getSessionSettings();
-  integ.push(tr(["Keamanan Sesi & Timeout", (window.firebaseAuthPersistenceMode === "NONE" ? "inMemoryPersistence" : "browserSessionPersistence (per-tab)") + " · Auto-logout " + sCfg.timeoutMinutes + " menit inaktif", okTag(true)]));
-
-  var head = ["Kode", "Bulan", "Gap", "Bln=0", "Demand>0", "ADI", "CV&sup2;", "Klasifikasi", "&alpha; Croston", "&alpha; SBA", "&beta; TSB", "MSE", "MAD", "MASE", "RMSSE", "Evaluasi (>60 / &le;60)", "Terbaik", "Horizon", "Tanggal Forecast", "Prediksi"];
-
-  return (
-    '<div class="topbar"><div><div class="topbar-title">Validation / Audit</div><div class="topbar-sub">Integritas sistem, keamanan per UID, paritas rumus Excel, dan audit seluruh material aktif</div></div>' + materialSelector() + '</div>' +
-    '<div class="content">' +
-      sec("Integritas Sistem, Firebase &amp; Baseline", "Pemeriksaan status autentikasi, sinkronisasi Firestore, dan keutuhan baseline 8 material Excel.", tbl(["Pemeriksaan", "Hasil", "Status"], integ), T_EXCEL) +
-      sec("Audit Forecast &mdash; Dataset Aktif (" + allCodes.length + " material" + (allCodes.length > 100 ? ", menampilkan 100 pertama" : "") + ")",
-        "Seluruh parameter &alpha;/&beta; menggunakan grid search 0,0001&ndash;1,0000 dengan rumus Croston, SBA, dan TSB terverifikasi Excel. Evaluasi otomatis: &gt;60 bulan memakai Train/Test 50:50 kronologis; &le;60 bulan memakai perbandingan terhadap demand aktual terakhir.",
-        tbl(head, rowsF)) +
-      (m ? sec('Detail Material Terpilih: ' + esc(state.selected) + ' &mdash; ' + esc(m.name), (m.predictions || []).length + ' kejadian forecast, horizon ' + m.horizonMonths + ' bulan.',
-        tbl(["Metode", "Parameter", "MSE", "MAD", "MASE", "RMSSE"], ["Croston", "SBA", "TSB"].map(function (k) {
-          var e = m.metrics[k];
-          return tr([k, k === "TSB" ? "&beta; = " + fmtNum(m.betaT, 4) : "&alpha; = " + fmtNum(k === "Croston" ? m.alphaC : m.alphaS, 4), fmtNum(e.mse, 6), fmtNum(e.mad, 4), fmtNum(e.mase, 4), fmtNum(e.rmsse, 4)]);
-        })) + '<div style="margin-top:12px;">' + statTableFor(state.selected) + '</div>') : '') +
+      renderValidationFeedback(valRes) +
+      sec("Forecast Configuration", "Parameter aktif yang digunakan untuk menghasilkan proyeksi permintaan.", configHtml) +
+      sec("Forecast Summary", "Ringkasan hasil model terpilih untuk material " + esc(state.selected) + " &mdash; " + esc(m.name) + ".", summaryHtml) +
+      sec("Material Demand Projection", "Garis waktu historis ke proyeksi beserta jadwal kejadian permintaan untuk material terpilih.", projectionBody, T_PROJECTION) +
+      sec("Forecast Results", "Ringkasan hasil proyeksi seluruh material (" + codes().length + " material unik).", resultsBody) +
     '</div>'
   );
 }
@@ -2285,29 +3014,29 @@ function render() {
   var pageHtml = "";
   if (state.workspaceLoading) {
     pageHtml =
-      '<div class="topbar"><div><div class="topbar-title">Memuat Workspace...</div><div class="topbar-sub">Mengambil dataset aktif &amp; riwayat dari akun Anda</div></div></div>' +
-      '<div class="content"><div class="card" style="text-align:center;padding:48px 24px;"><span class="spinner"></span><div style="margin-top:12px;font-weight:600;">Menyinkronkan data akun ' + esc(state.user.email) + '...</div><div style="font-size:12.5px;color:var(--muted);margin-top:4px;">Memeriksa dataset aktif dan hasil forecasting tersimpan di akun Anda.</div></div></div>';
+      '<div class="topbar"><div><div class="breadcrumb">Workspace</div><div class="topbar-title">Loading Workspace</div><div class="topbar-sub">Mengambil dataset aktif dan riwayat akun Anda</div></div></div>' +
+      '<div class="content"><div class="card" style="text-align:center;padding:44px 24px;"><span class="spinner"></span><div style="margin-top:12px;font-weight:600;">Menyinkronkan data akun ' + esc(state.user.email) + '...</div><div style="font-size:12px;color:var(--muted);margin-top:4px;">Memuat dataset aktif dan hasil analisis tersimpan.</div></div></div>';
   } else {
     if (state.page === "overview") pageHtml = renderOverview();
-    else if (state.page === "material") pageHtml = renderDetail();
-    else if (state.page === "forecast") pageHtml = renderForecast();
-    else if (state.page === "data") pageHtml = renderData();
-    else if (state.page === "datasets") pageHtml = renderDatasets();
-    else if (state.page === "audit") pageHtml = renderAudit();
+    else if (state.page === "data-management") pageHtml = renderDataManagement();
+    else if (state.page === "data-preparation") pageHtml = renderDataPreparation();
+    else if (state.page === "material-analysis") pageHtml = renderMaterialAnalysis();
+    else if (state.page === "demand-forecasting") pageHtml = renderDemandForecasting();
+    else pageHtml = renderOverview();
   }
 
   var banner = "";
   if (state.workspaceError) {
-    banner += '<div class="callout err section"><span>&#9888;</span><span style="flex:1;">' + esc(state.workspaceError) + '</span><button class="btn-ghost btn-sm" data-action="retry-sync">Coba Lagi</button></div>';
+    banner += '<div class="callout err section"><span class="callout-label">Error</span><span style="flex:1;">' + esc(state.workspaceError) + '</span><button class="btn-ghost btn-sm" data-action="retry-sync">Retry</button></div>';
   }
   if (state.localPreviewOnly) {
-    banner += '<div class="callout warn section"><span>&#9888;</span><span><strong>MODE PREVIEW LOKAL (SEMENTARA)</strong> &mdash; data ini belum disimpan permanen ke Firebase. <button class="btn-danger-text" style="color:var(--accent);font-weight:600;" data-action="activate-dataset" data-id="baseline">Kembali ke Baseline Awal</button></span></div>';
+    banner += '<div class="callout warn section"><span class="callout-label">Preview</span><span><strong>Local Preview Mode (Temporary)</strong> &mdash; data ini tidak disimpan permanen ke akun Anda. <button class="btn-link" data-action="activate-dataset" data-id="baseline">Return to Baseline</button></span></div>';
   }
   if (banner) {
     pageHtml = pageHtml.replace('<div class="content">', '<div class="content">' + banner);
   }
 
-  app.innerHTML = renderNav() + '<div class="main">' + pageHtml + '</div>';
+  app.innerHTML = renderNav() + '<main class="main">' + pageHtml + '</main>';
   attachEvents();
 }
 
@@ -2331,7 +3060,19 @@ function attachEvents() {
     el.addEventListener("click", function () { state.filterClass = el.getAttribute("data-class"); render(); });
   });
   app.querySelectorAll('[data-action="select-detail"]').forEach(function (el) {
-    el.addEventListener("click", function () { state.selected = el.getAttribute("data-code"); navigateToPage("material", false); });
+    el.addEventListener("click", function () { state.selected = el.getAttribute("data-code"); navigateToPage("material-analysis", false); });
+  });
+  app.querySelectorAll('[data-action="select-prep"]').forEach(function (el) {
+    el.addEventListener("click", function () {
+      state.selected = el.getAttribute("data-code");
+      render();
+    });
+  });
+  app.querySelectorAll('[data-action="prep-filter"]').forEach(function (el) {
+    el.addEventListener("click", function () {
+      state.prepNonZeroOnly = el.getAttribute("data-mode") === "nonzero";
+      render();
+    });
   });
   app.querySelectorAll('[data-action="select-forecast"]').forEach(function (el) {
     el.addEventListener("click", function () {
@@ -2345,7 +3086,7 @@ function attachEvents() {
   var sel = app.querySelector('[data-action="change-material"]');
   if (sel) sel.addEventListener("change", function (e) { state.selected = e.target.value; render(); });
 
-  ["ov-search", "fc-search"].forEach(function (searchId) {
+  ["ov-search", "fc-search", "prep-search"].forEach(function (searchId) {
     var el = document.getElementById(searchId);
     if (el) {
       el.addEventListener("input", function (e) {
@@ -2359,6 +3100,42 @@ function attachEvents() {
   });
   var ovLimit = document.getElementById("ov-limit");
   if (ovLimit) ovLimit.addEventListener("change", function (e) { state.pageLimit = Number(e.target.value); render(); });
+
+  // Export Processed Dataset CSV
+  var expPrep = app.querySelector('[data-action="export-processed"]');
+  if (expPrep) {
+    expPrep.addEventListener("click", function () {
+      var m = mat();
+      if (!m || !m.data) return;
+      var cum = 0;
+      var rows = m.data.map(function (r) {
+        var q = Number(r[1] || 0);
+        cum += q;
+        return [state.selected, m.name, r[0], q, q > 0 ? "Demand Event" : "Zero Demand", cum];
+      });
+      downloadCsvFile("dead-stock-analytics-processed-" + state.selected + ".csv",
+        ["Stock Code", "Material", "Period", "Actual Demand", "Demand State", "Cumulative Demand"], rows);
+    });
+  }
+
+  // Export Forecast Results CSV
+  var expFc = app.querySelector('[data-action="export-forecast"]');
+  if (expFc) {
+    expFc.addEventListener("click", function () {
+      var rows = codes().map(function (c) {
+        var m = state.materials[c];
+        var preds = m.predictions || [];
+        return [
+          c, m.name, m.classification, m.adi, m.cv2, m.bestMethod,
+          m.bestMethod === "Croston" ? m.alphaC : m.bestMethod === "SBA" ? m.alphaS : m.betaT,
+          m.metrics[m.bestMethod].mase,
+          m.nextMonth || "", m.nextQty || "", m.interval || "", preds.length, m.horizonMonths || m.data.length
+        ];
+      });
+      downloadCsvFile("dead-stock-analytics-demand-forecasting.csv",
+        ["Stock Code", "Material", "Classification", "ADI", "CV2", "Selected Model", "Optimal Parameter", "MASE", "Next Projected Period", "Projected Qty", "Avg Interval", "Projected Events", "Horizon Months"], rows);
+    });
+  }
 
   // Dataset management actions
   app.querySelectorAll('[data-action="activate-dataset"]').forEach(function (el) {
@@ -2507,20 +3284,23 @@ function handleOfflineCsvPreview(file) {
    ============================================================ */
 var ROUTE_TO_PAGE = {
   "#/overview": "overview",
-  "#/material": "material",
-  "#/forecast": "forecast",
-  "#/upload": "data",
-  "#/data": "data",
-  "#/datasets": "datasets",
-  "#/audit": "audit"
+  "#/data-management": "data-management",
+  "#/data-preparation": "data-preparation",
+  "#/material-analysis": "material-analysis",
+  "#/demand-forecasting": "demand-forecasting",
+  // Safe redirects for legacy URLs
+  "#/material": "material-analysis",
+  "#/forecast": "demand-forecasting",
+  "#/upload": "data-management",
+  "#/data": "data-management",
+  "#/datasets": "data-management"
 };
 var PAGE_TO_ROUTE = {
-  overview: "#/overview",
-  material: "#/material",
-  forecast: "#/forecast",
-  data: "#/upload",
-  datasets: "#/datasets",
-  audit: "#/audit"
+  "overview": "#/overview",
+  "data-management": "#/data-management",
+  "data-preparation": "#/data-preparation",
+  "material-analysis": "#/material-analysis",
+  "demand-forecasting": "#/demand-forecasting"
 };
 
 var sessionState = {
@@ -2588,7 +3368,7 @@ function clearBrowserSensitiveStorage() {
 function initSessionBroadcastChannel() {
   if (typeof BroadcastChannel === "undefined") return;
   try {
-    sessionState.channel = new BroadcastChannel("forecast_studio_session_guard");
+    sessionState.channel = new BroadcastChannel("dead_stock_analytics_session_guard");
     sessionState.channel.onmessage = function (ev) {
       var msg = ev && ev.data;
       if (!msg || msg.senderId === TAB_INSTANCE_ID) return;
@@ -2785,6 +3565,10 @@ function handleProtectedRouteChange() {
   }
   var p = pageFromCurrentHash();
   if (p) {
+    var canonicalHash = PAGE_TO_ROUTE[p] || "#/overview";
+    if (window.location.hash !== canonicalHash) {
+      try { history.replaceState({ auth: true, page: p }, "", canonicalHash); } catch (e) {}
+    }
     if (state.page !== p) {
       state.page = p;
       render();
@@ -2878,10 +3662,10 @@ function renderLogin(alertMsg, alertKind, prefillEmail) {
         '<div class="auth-brand">' +
           '<div class="auth-logo">DS</div>' +
           '<div class="auth-title">Dead Stock Analytics</div>' +
-          '<div class="auth-subtitle">Spare Parts Demand Forecasting &amp; Model Validation</div>' +
+          '<div class="auth-subtitle">Spare Parts Demand Forecasting</div>' +
         '</div>' +
         (alertMsg
-          ? '<div class="auth-alert ' + esc(kind) + '" role="alert"><span>' + (kind === "err" ? "&#9888;" : "&#9432;") + '</span><span>' + esc(alertMsg) + '</span></div>'
+          ? '<div class="auth-alert ' + esc(kind) + '" role="alert"><span class="callout-label">' + (kind === "err" ? "Error" : kind === "warn" ? "Warning" : "Info") + '</span><span>' + esc(alertMsg) + '</span></div>'
           : '') +
         '<form id="auth-form" novalidate>' +
           '<div class="auth-field-group">' +

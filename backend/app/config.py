@@ -1,4 +1,4 @@
-"""Environment-based configuration for Forecast Studio Backend."""
+"""Environment-based configuration for Dead Stock Analytics Backend."""
 
 from __future__ import annotations
 

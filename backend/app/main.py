@@ -1,4 +1,4 @@
-"""FastAPI application for Forecast Studio Backend.
+"""FastAPI application for Dead Stock Analytics Backend.
 
 Preserves all existing frontend bridge endpoints:
 - GET  /                        Health check & capabilities
@@ -53,9 +53,9 @@ def _validate_dataset_id(dataset_id: str) -> str:
 
 
 app = FastAPI(
-    title="Forecast Studio API",
+    title="Dead Stock Analytics API",
     version=__version__,
-    description="Intermittent demand forecasting backend (ADI/CV², Croston, SBA, TSB) with Firebase persistence.",
+    description="Spare parts intermittent demand forecasting backend (ADI/CV², Croston, SBA, TSB) with Firebase persistence.",
 )
 
 app.add_middleware(
@@ -88,7 +88,7 @@ class AnalyzeRequest(BaseModel):
 def health_check() -> Dict[str, Any]:
     return {
         "status": "ok",
-        "service": "forecast-studio-api",
+        "service": "dead-stock-analytics-api",
         "version": __version__,
         "environment": settings.environment,
         "auth_required": settings.require_auth,

@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Dead Stock Forecast Studio</title>
+<title>Dead Stock Analytics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="./config.js"></script>
@@ -1659,8 +1659,8 @@ function renderNav() {
   return (
     '<div class="nav">' +
       '<div class="nav-brand">' +
-        '<div class="nav-brand-title">Forecast Studio</div>' +
-        '<div class="nav-brand-sub">Dashboard Forecasting Material</div>' +
+        '<div class="nav-brand-title">Dead Stock Analytics</div>' +
+        '<div class="nav-brand-sub">Spare Parts Demand Forecasting &amp; Model Validation</div>' +
       '</div>' +
       '<div class="nav-workspace-pill">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px;">' +
@@ -2877,8 +2877,8 @@ function renderLogin(alertMsg, alertKind, prefillEmail) {
       '<div class="auth-card">' +
         '<div class="auth-brand">' +
           '<div class="auth-logo">DS</div>' +
-          '<div class="auth-title">Dead Stock Forecast Studio</div>' +
-          '<div class="auth-subtitle">Dead Stock Analytics &amp; Intermittent Demand Forecasting</div>' +
+          '<div class="auth-title">Dead Stock Analytics</div>' +
+          '<div class="auth-subtitle">Spare Parts Demand Forecasting &amp; Model Validation</div>' +
         '</div>' +
         (alertMsg
           ? '<div class="auth-alert ' + esc(kind) + '" role="alert"><span>' + (kind === "err" ? "&#9888;" : "&#9432;") + '</span><span>' + esc(alertMsg) + '</span></div>'
@@ -2896,11 +2896,8 @@ function renderLogin(alertMsg, alertKind, prefillEmail) {
             '</div>' +
           '</div>' +
           '<div id="auth-inline-err" style="color:var(--lumpy);font-size:12px;min-height:16px;margin-bottom:8px;"></div>' +
-          '<button type="submit" class="btn auth-submit" id="auth-submit">Masuk ke Dashboard</button>' +
+          '<button type="submit" class="btn auth-submit" id="auth-submit">Masuk</button>' +
         '</form>' +
-        '<div class="auth-meta">' +
-          'Akses berbasis sesi aman &middot; Anda wajib login ulang saat membuka tab atau browser baru, serta logout otomatis setelah ' + cfg.timeoutMinutes + ' menit tidak aktif.' +
-        '</div>' +
       '</div>' +
     '</div>';
 
@@ -2927,7 +2924,7 @@ function renderLogin(alertMsg, alertKind, prefillEmail) {
     submitEl.disabled = loading;
     submitEl.innerHTML = loading
       ? '<span class="spinner" style="width:15px;height:15px;border-width:2px;border-top-color:#fff;border-color:rgba(255,255,255,0.35);"></span>Memverifikasi sesi...'
-      : 'Masuk ke Dashboard';
+      : 'Masuk';
   }
 
   formEl.addEventListener("submit", async function (e) {

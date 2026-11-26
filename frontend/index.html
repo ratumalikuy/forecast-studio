@@ -2429,14 +2429,15 @@ function renderOverview() {
       '</div>' +
     '</div>' +
     '<div class="content">' +
-      sec("Portfolio Summary", "Ringkasan cakupan material, klasifikasi permintaan, dan protokol evaluasi pada dataset aktif.",
+      '<div class="section">' +
+        '<div class="section-head" style="margin-bottom:10px;"><div class="section-title">Material Summary</div></div>' +
         '<div class="grid grid-4">' +
           kpiCard("Total Materials", all.length, "", isBaselineActive() ? "Baseline 8 material Excel" : "Active workspace dataset") +
           kpiCard("Lumpy / Intermittent", cnt("Lumpy") + " / " + cnt("Intermittent"), "", "ADI &gt; 1,32") +
           kpiCard("Materials with Projection", withF, "/ " + all.length, totalEvents + " total projected events") +
           kpiCard("Evaluation Protocol", nTT + " / " + (all.length - nTT), "", "&gt;60 mo Train/Test &middot; &le;60 mo Last Demand") +
-        '</div>'
-      ) +
+        '</div>' +
+      '</div>' +
       '<div class="grid grid-2 section">' +
         '<div class="card">' +
           '<div class="section-title" style="margin-bottom:4px;">Demand Pattern Distribution' + tip("Klasifikasi Syntetos-Boylan: ADI > 1,32 & CV² > 0,49 = Lumpy; ADI > 1,32 & CV² <= 0,49 = Intermittent; ADI <= 1,32 & CV² > 0,49 = Erratic; lainnya = Smooth.") + '</div>' +
